@@ -1,4 +1,19 @@
+import { createOpenAI } from '@ai-sdk/openai';
+import { generateText } from 'ai';
+import { env } from 'cloudflare:workers';
 import * as PostalMime from 'postal-mime';
+
+const openai = createOpenAI({
+	apiKey: env.OPENAI_API_KEY,
+});
+
+const prompt = `
+Translate the following issue description into Traditional Chinese with following rules:
+
+1. You MUST use Traditional Chinese (Taiwan) for all translations.
+2. You MUST keep code blocks and formatting in the original format.
+3. Use simple and clear language to explain the issue.
+`;
 
 interface Issue {
 	id: number;
@@ -26,7 +41,11 @@ export default {
 		console.log(`Fetching issue from ${issueLink}.json?include=journals`);
 		const { issue } = (await (await fetch(`${issueLink}.json?include=journals`)).json()) as { issue: Issue };
 
-		console.debug(`Subject: ${issue.subject}`);
-		console.debug(`Description: ${issue.description}`);
+		const { text } = await generateText({
+			model: openai('gpt-4.1-mini'),
+			prompt: `${prompt}\n\n Subject: ${issue.subject}\n\nDescription:\n${issue.description}`,
+		});
+
+		console.debug(text);
 	},
 } satisfies ExportedHandler<Env>;
