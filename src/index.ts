@@ -23,7 +23,8 @@ export default {
 			return;
 		}
 
-		const issue = (await (await fetch(`${issueLink}.json?include=journals`)).json()) as Issue;
+		console.log(`Fetching issue from ${issueLink}.json?include=journals`);
+		const { issue } = (await (await fetch(`${issueLink}.json?include=journals`)).json()) as { issue: Issue };
 
 		console.debug(`Subject: ${issue.subject}`);
 		console.debug(`Description: ${issue.description}`);
