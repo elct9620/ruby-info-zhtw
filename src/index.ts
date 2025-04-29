@@ -16,8 +16,9 @@ export default {
 		const parsedEmail = await parser.parse(await rawEmail.arrayBuffer());
 		const body = parsedEmail.text;
 
-		// TODO: Parse the body to extract the issue number
-		const issueLink = undefined;
+		// Parse the body to extract the issue link
+		const issueLinkMatch = body.match(/https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/);
+		const issueLink = issueLinkMatch ? issueLinkMatch[0] : undefined;
 		const issue = (await (await fetch(`${issueLink}.json?include=journals`)).json()) as Issue;
 
 		console.debug(`Subject: ${issue.subject}`);
