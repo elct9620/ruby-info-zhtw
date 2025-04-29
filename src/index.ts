@@ -16,9 +16,13 @@ export default {
 		const parsedEmail = await parser.parse(await rawEmail.arrayBuffer());
 		const body = parsedEmail.text;
 
-		// Parse the body to extract the issue link
-		const issueLinkMatch = body.match(/https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/);
+		const issueLinkMatch = body?.match(/https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/);
 		const issueLink = issueLinkMatch ? issueLinkMatch[0] : undefined;
+		if (!issueLink) {
+			console.error('No issue link found in the email body.');
+			return;
+		}
+
 		const issue = (await (await fetch(`${issueLink}.json?include=journals`)).json()) as Issue;
 
 		console.debug(`Subject: ${issue.subject}`);
