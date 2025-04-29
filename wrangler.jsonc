@@ -17,6 +17,12 @@
 	 */
 	"placement": { "mode": "smart" },
 
+	"send_email": [
+    {
+      "name": "core@ruby.aotoki.cloud"
+    }
+  ],
+
 	/**
 	 * Bindings
 	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
