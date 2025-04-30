@@ -6,11 +6,21 @@ export enum EmailDispatchType {
 	Reject = 'reject',
 }
 
-export type EmailRoute = {
-	type: EmailDispatchType;
-	text: string;
-	params?: Record<string, any>;
-};
+export type EmailRoute =
+	| {
+			type: EmailDispatchType.Summarize;
+			text: string;
+			params: { issueId: number };
+	  }
+	| {
+			type: EmailDispatchType.ForwardAdmin;
+			text: string;
+			params: { adminEmail: string };
+	  }
+	| {
+			type: EmailDispatchType.Reject;
+			text: string;
+	  };
 
 export class EmailDispatcher {
 	private readonly ALLOWED_ORIGINS = ['frost.tw', 'aotoki.me', 'nue.mailmanlists.eu', 'ml.ruby-lang.org'];
@@ -24,7 +34,7 @@ export class EmailDispatcher {
 		const body = parsedEmail.text;
 
 		// Validate sender domain is in allowed origins
-		const from = parsedEmail.from?.value[0]?.address || '';
+		const from = parsedEmail.from.address || '';
 		const senderDomain = from.split('@')[1]?.toLowerCase();
 
 		if (!senderDomain || !this.ALLOWED_ORIGINS.some((domain) => senderDomain.endsWith(domain))) {
@@ -32,32 +42,32 @@ export class EmailDispatcher {
 			return {
 				type: EmailDispatchType.ForwardAdmin,
 				text: `Unauthorized sender domain: ${senderDomain}`,
-				params: { adminEmail: this.adminEmail }
+				params: { adminEmail: this.adminEmail },
 			};
 		}
 
 		// Check if the email body contains a valid issue link
 		const issueLinkMatch = body?.match(/https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/);
 		const issueLink = issueLinkMatch ? issueLinkMatch[0] : undefined;
-		
+
 		if (!issueLink) {
 			console.error('No issue link found in the email body.');
 			return {
 				type: EmailDispatchType.ForwardAdmin,
 				text: 'No issue link found in the email body.',
-				params: { adminEmail: this.adminEmail }
+				params: { adminEmail: this.adminEmail },
 			};
 		}
 
 		// Extract issueId as params
 		const match = issueLink.match(/https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/);
 		const issueId = match ? parseInt(match[1], 10) : null;
-		
+
 		if (!issueId) {
 			console.error('Failed to extract issue ID from the link.');
 			return {
 				type: EmailDispatchType.Reject,
-				text: 'Failed to extract issue ID from the link.'
+				text: 'Failed to extract issue ID from the link.',
 			};
 		}
 
@@ -65,10 +75,9 @@ export class EmailDispatcher {
 		return {
 			type: EmailDispatchType.Summarize,
 			text: `Processing Ruby issue #${issueId}`,
-			params: { 
+			params: {
 				issueId,
-				issueLink
-			}
+			},
 		};
 	}
 }
