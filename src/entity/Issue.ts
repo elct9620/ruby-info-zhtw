@@ -1,6 +1,9 @@
+import { Journal } from './Journal';
+
 export class Issue {
 	private _subject: string = '';
 	private _description: string = '';
+	private _journals: Journal[] = [];
 
 	constructor(public readonly id: number) {}
 
@@ -18,6 +21,18 @@ export class Issue {
 
 	set description(description: string) {
 		this._description = description;
+	}
+
+	get journals(): Journal[] {
+		return [...this._journals];
+	}
+
+	addJournal(journal: Journal): void {
+		if (!journal.isValid()) {
+			return;
+		}
+
+		this._journals = [...this._journals, journal];
 	}
 
 	isValid(): boolean {
