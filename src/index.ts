@@ -21,17 +21,17 @@ export default {
 		const rawEmail = new Response(message.raw);
 		const parsedEmail = await parser.parse(await rawEmail.arrayBuffer());
 		const body = parsedEmail.text;
-		
+
 		// Validate sender domain is in allowed origins
-		const from = parsedEmail.from?.value[0]?.address || '';
+		const from = parsedEmail.from.address || '';
 		const senderDomain = from.split('@')[1]?.toLowerCase();
-		
-		if (!senderDomain || !ALLOWED_ORIGINS.some(domain => senderDomain.endsWith(domain))) {
+
+		if (!senderDomain || !ALLOWED_ORIGINS.some((domain) => senderDomain.endsWith(domain))) {
 			console.error(`Unauthorized sender domain: ${senderDomain}`);
-			await message.forward(env.ADMIN_EMAIL);
+			message.setReject('Unauthorized sender domain');
 			return;
 		}
-		
+
 		const issueLinkMatch = body?.match(/https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/);
 		const issueLink = issueLinkMatch ? issueLinkMatch[0] : undefined;
 		if (!issueLink) {
