@@ -10,6 +10,7 @@ export interface SummarizeService {
 
 export interface SummarizePresenter {
 	setTitle(title: string): void;
+	setType(type: string): void;
 	setLink(link: string): void;
 	setDescription(description: string): void;
 }
