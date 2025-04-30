@@ -1,22 +1,15 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText } from 'ai';
 import { env } from 'cloudflare:workers';
 import * as PostalMime from 'postal-mime';
 import { DiscordSummarizePresenter } from './presenter/DiscordSummarizePresenter';
 import { RestIssueRepository } from './repository/RestIssueRepository';
+import { AiSummarizeService } from './service/AiSummarizeService';
 
 const openai = createOpenAI({
 	baseURL: env.CF_AI_GATEWAY ? `${env.CF_AI_GATEWAY}openai` : undefined,
 	apiKey: env.OPENAI_API_KEY,
 });
 
-const prompt = `
-Translate the following issue description into Traditional Chinese with following rules:
-
-1. You MUST use Traditional Chinese (Taiwan) for all translations.
-2. You MUST keep code blocks and formatting in the original format.
-3. Use simple and clear language to explain the issue.
-`;
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -51,13 +44,12 @@ export default {
 			return;
 		}
 
-		const journalNotes = issue.journals.flatMap((journal) => `${journal.userName}:\n${journal.notes}`).join('\n\n');
-
-		const { text } = await generateText({
-			model: openai('gpt-4.1-mini'),
-			prompt: `${prompt}\n\n Subject: ${issue.subject}\n\nDescription:\n${issue.description}\n\nJournals:\n${journalNotes}`,
-		});
-
+		// Create the summarize service with the language model
+		const summarizeService = new AiSummarizeService(openai('gpt-4.1-mini'));
+		
+		// Execute the service to get the translated text
+		const text = await summarizeService.execute(issue);
+		
 		console.debug(text);
 
 		// Send the translated content to Discord using the presenter
