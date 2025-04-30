@@ -29,11 +29,11 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 			embeds: [
 				{
 					title: this.title,
-					description: this.description.length > 4000 ? this.description.substring(0, 4000) + '...(內容過長，已截斷)' : this.description,
+					description: this.description.length > 3000 ? this.description.substring(0, 3000) + '...(內容過長，已截斷)' : this.description,
 					color: 0xcc342d, // Ruby red color
 					url: this.link,
 					footer: {
-						text: '由 AI 自動翻譯 | 原始內容可能有所不同',
+						text: '由 AI 自動歸納，僅供參考',
 					},
 					timestamp: new Date().toISOString(),
 				},
