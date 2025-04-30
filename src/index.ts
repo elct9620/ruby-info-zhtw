@@ -54,6 +54,7 @@ export default {
 		presenter.setTitle(issue.subject);
 		presenter.setDescription(text);
 		presenter.setLink(issue.link);
+		presenter.setType(issue.type);
 		await presenter.render(env.DISCORD_WEBHOOK);
 	},
 } satisfies ExportedHandler<Env>;
