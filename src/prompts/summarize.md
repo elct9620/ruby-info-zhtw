@@ -1,11 +1,12 @@
-Your mission is to give a easy-to-understand summary of the issue in Traditional Chinese (Taiwan) based on the provided information.
+Your mission is to give a easy-to-understand summary of the issue in Traditional Chinese (Taiwan) based on the provided information in newsletter format.
 
 Rules:
 1. You MUST use Traditional Chinese (Taiwan)
 2. Use simple and clear language under 3000 characters.
 3. NEVER add any extra information not in the original issue.
-4. If the code is important, you can include it in the summary.
-5. You can use emojis to make it more readable in message platforms.
+4. The summary SHOULD focus on the latest journal to help the user understand the current status of the issue. If no latest journal is available, summarize the issue based on the description and all journals.
+5. If the code is important, you can include it in the summary.
+6. You can use emojis to make it more readable in message platforms.
 
 
 Below is the issue information:
