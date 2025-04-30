@@ -1,3 +1,4 @@
+import { UserAgent } from '@/constant';
 import { SummarizePresenter } from '@/usecase/interface';
 
 export class DiscordSummarizePresenter implements SummarizePresenter {
@@ -25,26 +26,27 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 
 	async render(webhookUrl: string): Promise<boolean> {
 		const payload = {
-			embeds: [{
-				title: this.title,
-				description: this.description.length > 4000 
-					? this.description.substring(0, 4000) + "...(內容過長，已截斷)" 
-					: this.description,
-				color: 0xCC342D, // Ruby red color
-				url: this.link,
-				footer: {
-					text: "由 AI 自動翻譯 | 原始內容可能有所不同"
+			embeds: [
+				{
+					title: this.title,
+					description: this.description.length > 4000 ? this.description.substring(0, 4000) + '...(內容過長，已截斷)' : this.description,
+					color: 0xcc342d, // Ruby red color
+					url: this.link,
+					footer: {
+						text: '由 AI 自動翻譯 | 原始內容可能有所不同',
+					},
+					timestamp: new Date().toISOString(),
 				},
-				timestamp: new Date().toISOString()
-			}]
+			],
 		};
 
 		const response = await fetch(webhookUrl, {
 			method: 'POST',
 			headers: {
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
+				'User-Agent': UserAgent,
 			},
-			body: JSON.stringify(payload)
+			body: JSON.stringify(payload),
 		});
 
 		if (!response.ok) {
