@@ -4,7 +4,6 @@ import { env } from 'cloudflare:workers';
 import * as PostalMime from 'postal-mime';
 import { DiscordSummarizePresenter } from './presenter/DiscordSummarizePresenter';
 import { RestIssueRepository } from './repository/RestIssueRepository';
-import { Issue } from './entity/Issue';
 
 const openai = createOpenAI({
 	baseURL: env.CF_AI_GATEWAY ? `${env.CF_AI_GATEWAY}openai` : undefined,
@@ -18,7 +17,6 @@ Translate the following issue description into Traditional Chinese with followin
 2. You MUST keep code blocks and formatting in the original format.
 3. Use simple and clear language to explain the issue.
 `;
-
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -53,9 +51,11 @@ export default {
 			return;
 		}
 
+		const journalNotes = issue.journals.flatMap((journal) => `${journal.userName}:\n${journal.notes}`).join('\n\n');
+
 		const { text } = await generateText({
 			model: openai('gpt-4.1-mini'),
-			prompt: `${prompt}\n\n Subject: ${issue.subject}\n\nDescription:\n${issue.description}`,
+			prompt: `${prompt}\n\n Subject: ${issue.subject}\n\nDescription:\n${issue.description}\n\nJournals:\n${journalNotes}`,
 		});
 
 		console.debug(text);
