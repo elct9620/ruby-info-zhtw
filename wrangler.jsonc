@@ -22,6 +22,18 @@
       "name": "core@ruby.aotoki.cloud"
     }
   ],
+  "rules": [
+		{
+			"type": "Text",
+			"globs": ["src/**/*.md"],
+			"fallthrough": true
+		},
+		{
+			"type": "Text",
+			"globs": ["src/**/*.txt"],
+			"fallthrough": true
+		}
+	]
 
 	/**
 	 * Bindings
