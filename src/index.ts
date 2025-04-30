@@ -4,6 +4,7 @@ import * as PostalMime from 'postal-mime';
 import { DiscordSummarizePresenter } from './presenter/DiscordSummarizePresenter';
 import { RestIssueRepository } from './repository/RestIssueRepository';
 import { AiSummarizeService } from './service/AiSummarizeService';
+import { SummarizeUsecase } from './usecase/SummarizeUsecase';
 
 const openai = createOpenAI({
 	baseURL: env.CF_AI_GATEWAY ? `${env.CF_AI_GATEWAY}openai` : undefined,
@@ -48,26 +49,20 @@ export default {
 			return;
 		}
 
-		// Fetch issue using the repository
-		const repository = new RestIssueRepository();
-		const issue = await repository.findById(issueId);
-		if (!issue) {
-			console.error(`Failed to fetch issue with ID: ${issueId}`);
-			return;
+		try {
+			// Create dependencies
+			const repository = new RestIssueRepository();
+			const summarizeService = new AiSummarizeService(openai('gpt-4.1-mini'));
+			const presenter = new DiscordSummarizePresenter();
+			
+			// Create and execute the use case
+			const useCase = new SummarizeUsecase(repository, summarizeService, presenter);
+			await useCase.execute(issueId);
+			
+			// Render the result to Discord
+			await presenter.render(env.DISCORD_WEBHOOK);
+		} catch (error) {
+			console.error(`Error processing issue ${issueId}:`, error);
 		}
-
-		// Create the summarize service with the language model
-		const summarizeService = new AiSummarizeService(openai('gpt-4.1-mini'));
-
-		// Execute the service to get the translated text
-		const text = await summarizeService.execute(issue);
-
-		// Send the translated content to Discord using the presenter
-		const presenter = new DiscordSummarizePresenter();
-		presenter.setTitle(issue.subject);
-		presenter.setDescription(text);
-		presenter.setLink(issue.link);
-		presenter.setType(issue.type);
-		await presenter.render(env.DISCORD_WEBHOOK);
 	},
 } satisfies ExportedHandler<Env>;
