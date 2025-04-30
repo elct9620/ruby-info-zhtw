@@ -17,7 +17,6 @@ export class AiSummarizeService implements SummarizeService {
 				notes: journal.notes,
 			})),
 		});
-		console.debug('Summarize Prompt', prompt);
 
 		const { text } = await generateText({
 			model: this.llmModel,

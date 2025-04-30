@@ -10,7 +10,6 @@ const openai = createOpenAI({
 	apiKey: env.OPENAI_API_KEY,
 });
 
-
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		return new Response('Hello World!');
@@ -46,11 +45,9 @@ export default {
 
 		// Create the summarize service with the language model
 		const summarizeService = new AiSummarizeService(openai('gpt-4.1-mini'));
-		
+
 		// Execute the service to get the translated text
 		const text = await summarizeService.execute(issue);
-		
-		console.debug(text);
 
 		// Send the translated content to Discord using the presenter
 		const presenter = new DiscordSummarizePresenter();
