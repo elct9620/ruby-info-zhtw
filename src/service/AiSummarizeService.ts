@@ -12,11 +12,12 @@ export class AiSummarizeService implements SummarizeService {
 		const prompt = Mustache.render(promptTemplate, {
 			subject: issue.subject,
 			description: issue.description,
-			journals: issue.journals.map(journal => ({
+			journals: issue.journals.map((journal) => ({
 				userName: journal.userName,
-				notes: journal.notes
-			}))
+				notes: journal.notes,
+			})),
 		});
+		console.debug('Summarize Prompt', prompt);
 
 		const { text } = await generateText({
 			model: this.llmModel,

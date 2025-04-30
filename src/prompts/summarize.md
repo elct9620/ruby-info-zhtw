@@ -1,8 +1,13 @@
-Translate the following issue description into Traditional Chinese with following rules:
+Your mission is to give a easy-to-understand summary of the issue in Traditional Chinese (Taiwan) based on the provided information.
 
-1. You MUST use Traditional Chinese (Taiwan) for all translations.
-2. You MUST keep code blocks and formatting in the original format.
-3. Use simple and clear language to explain the issue.
+Rules:
+1. You MUST use Traditional Chinese (Taiwan)
+2. Use simple and clear language under 3000 characters.
+3. NEVER add any extra information not in the original issue.
+4. If the code is important, you can include it in the summary.
+
+
+Below is the issue information:
 
 Subject: {{subject}}
 
