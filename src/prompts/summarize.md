@@ -1,4 +1,4 @@
-Your mission is converting the issue latest journal to a newsletter format, helping the user understand the current status of the issue.
+Your mission is converting the issue latest journal to technology news, helping the user understand the current status of the issue.
 
 You need to follow these rules:
 1. You MUST use Traditional Chinese (Taiwan)
