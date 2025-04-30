@@ -16,15 +16,18 @@ Type: {{type}}
 Description:
 {{description}}
 
-Latest Journal:
 {{#latestJournal}}
+Latest Journal:
 {{userName}}:
 {{notes}}
+
 {{/latestJournal}}
 
+{{#journals.length}}
 All Journals:
 {{#journals}}
 {{userName}}:
 {{notes}}
 
 {{/journals}}
+{{/journals.length}}
