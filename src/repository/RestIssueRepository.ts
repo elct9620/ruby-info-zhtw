@@ -1,4 +1,4 @@
-import { Issue } from '@/entity/Issue';
+import { Issue, IssueType } from '@/entity/Issue';
 import { Journal } from '@/entity/Journal';
 import { IssueRepository } from '@/usecase/interface';
 
@@ -50,6 +50,7 @@ export class RestIssueRepository implements IssueRepository {
 			issueEntity.subject = issue.subject;
 			issueEntity.description = issue.description;
 			issueEntity.link = `${RestIssueRepository.API_URL}/${issue.id}`;
+			issueEntity.type = this.mapTrackerToIssueType(issue.tracker?.name);
 
 			if (issue.journals && Array.isArray(issue.journals)) {
 				for (const journalData of issue.journals) {
@@ -64,6 +65,26 @@ export class RestIssueRepository implements IssueRepository {
 		} catch (error) {
 			console.error('Error fetching issue:', error);
 			return null;
+		}
+	}
+
+	/**
+	 * Maps tracker name from the API to IssueType enum
+	 * @param trackerName The tracker name from the API
+	 * @returns The corresponding IssueType
+	 */
+	private mapTrackerToIssueType(trackerName?: string): IssueType {
+		if (!trackerName) return IssueType.Unknown;
+		
+		switch (trackerName.toLowerCase()) {
+			case 'feature':
+				return IssueType.Feature;
+			case 'bug':
+				return IssueType.Bug;
+			case 'misc':
+				return IssueType.Misc;
+			default:
+				return IssueType.Unknown;
 		}
 	}
 }
