@@ -1,7 +1,8 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-import { env } from 'cloudflare:workers';
+import { env, type Env } from 'cloudflare:workers';
 import * as PostalMime from 'postal-mime';
+import { DiscordSummarizePresenter } from './presenter/DiscordSummarizePresenter';
 
 const openai = createOpenAI({
 	baseURL: env.CF_AI_GATEWAY ? `${env.CF_AI_GATEWAY}openai` : undefined,
@@ -22,50 +23,6 @@ interface Issue {
 	description: string;
 }
 
-/**
- * Sends the translated issue to Discord webhook
- */
-async function sendToDiscord(
-	webhookUrl: string,
-	data: {
-		issueId: number;
-		subject: string;
-		translatedText: string;
-		originalLink: string;
-	},
-) {
-	const { issueId, subject, translatedText, originalLink } = data;
-
-	const payload = {
-		embeds: [
-			{
-				title: `Ruby Issue #${issueId}: ${subject}`,
-				description: translatedText.length > 4000 ? translatedText.substring(0, 4000) + '...(內容過長，已截斷)' : translatedText,
-				color: 0xcc342d, // Ruby red color
-				url: originalLink,
-				footer: {
-					text: '由 AI 自動翻譯 | 原始內容可能有所不同',
-				},
-				timestamp: new Date().toISOString(),
-			},
-		],
-	};
-
-	const response = await fetch(webhookUrl, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify(payload),
-	});
-
-	if (!response.ok) {
-		console.error(`Failed to send to Discord: ${response.status} ${response.statusText}`);
-		console.error(await response.text());
-	}
-
-	return response.ok;
-}
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -94,13 +51,12 @@ export default {
 
 		console.debug(text);
 
-		// Send the translated content to Discord
-		await sendToDiscord(env.DISCORD_WEBHOOK, {
-			issueId: issue.id,
-			subject: issue.subject,
-			translatedText: text,
-			originalLink: issueLink,
-		});
+		// Send the translated content to Discord using the presenter
+		const presenter = new DiscordSummarizePresenter();
+		presenter.setTitle(`Ruby Issue: ${issue.subject}`);
+		presenter.setDescription(text);
+		presenter.setLink(issueLink);
+		await presenter.render(env.DISCORD_WEBHOOK);
 	},
 } satisfies ExportedHandler<Env>;
 
