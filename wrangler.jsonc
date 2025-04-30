@@ -25,12 +25,12 @@
   "rules": [
 		{
 			"type": "Text",
-			"globs": ["src/**/*.md"],
+			"globs": ["**/*.md"],
 			"fallthrough": true
 		},
 		{
 			"type": "Text",
-			"globs": ["src/**/*.txt"],
+			"globs": ["**/*.txt"],
 			"fallthrough": true
 		}
 	]
