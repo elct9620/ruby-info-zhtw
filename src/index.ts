@@ -24,6 +24,7 @@ export default {
 		const issueLink = issueLinkMatch ? issueLinkMatch[0] : undefined;
 		if (!issueLink) {
 			console.error('No issue link found in the email body.');
+			await message.forward(env.ADMIN_EMAIL);
 			return;
 		}
 
@@ -58,8 +59,3 @@ export default {
 		await presenter.render(env.DISCORD_WEBHOOK);
 	},
 } satisfies ExportedHandler<Env>;
-
-interface Env {
-	OPENAI_API_KEY: string;
-	DISCORD_WEBHOOK: string;
-}
