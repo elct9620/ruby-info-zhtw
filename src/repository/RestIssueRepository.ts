@@ -45,6 +45,23 @@ export class RestIssueRepository implements IssueRepository {
 			const issueEntity = new Issue(issue.id);
 			issueEntity.subject = issue.subject;
 			issueEntity.description = issue.description;
+			
+			// Process journals if available
+			if (issue.journals && Array.isArray(issue.journals)) {
+				// Import Journal entity
+				const { Journal } = await import('@/entity/Journal');
+				
+				// Add each journal to the issue
+				for (const journalData of issue.journals) {
+					if (journalData.notes && journalData.notes.trim().length > 0) {
+						const journal = new Journal(journalData.id);
+						journal.userName = journalData.user?.name || 'Unknown User';
+						journal.notes = journalData.notes;
+						issueEntity.addJournal(journal);
+					}
+				}
+			}
+			
 			return issueEntity;
 		} catch (error) {
 			console.error('Error fetching issue:', error);
