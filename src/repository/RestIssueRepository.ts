@@ -32,7 +32,10 @@ export class RestIssueRepository implements IssueRepository {
 				return null;
 			}
 			
-			return new Issue(issue.id, issue.subject, issue.description);
+			const issueEntity = new Issue(issue.id);
+			issueEntity.subject = issue.subject;
+			issueEntity.description = issue.description;
+			return issueEntity;
 		} catch (error) {
 			console.error('Error fetching issue:', error);
 			return null;
