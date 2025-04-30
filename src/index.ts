@@ -1,6 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-import { env, type Env } from 'cloudflare:workers';
+import { env } from 'cloudflare:workers';
 import * as PostalMime from 'postal-mime';
 import { DiscordSummarizePresenter } from './presenter/DiscordSummarizePresenter';
 
@@ -22,7 +22,6 @@ interface Issue {
 	subject: string;
 	description: string;
 }
-
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -53,7 +52,7 @@ export default {
 
 		// Send the translated content to Discord using the presenter
 		const presenter = new DiscordSummarizePresenter();
-		presenter.setTitle(`Ruby Issue: ${issue.subject}`);
+		presenter.setTitle(issue.subject);
 		presenter.setDescription(text);
 		presenter.setLink(issueLink);
 		await presenter.render(env.DISCORD_WEBHOOK);
