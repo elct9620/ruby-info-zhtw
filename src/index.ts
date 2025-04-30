@@ -10,6 +10,8 @@ const openai = createOpenAI({
 	apiKey: env.OPENAI_API_KEY,
 });
 
+const ALLOWED_ORIGINS = ['frost.tw', 'aotoki.me', 'nue.mailmanlists.eu', 'ml.ruby-lang.org'];
+
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		return new Response('Hello World!');
