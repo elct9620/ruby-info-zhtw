@@ -10,4 +10,8 @@ Description:
 {{description}}
 
 Journals:
-{{journals}}
+{{#journals}}
+{{userName}}:
+{{notes}}
+
+{{/journals}}

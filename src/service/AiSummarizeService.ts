@@ -9,12 +9,13 @@ export class AiSummarizeService implements SummarizeService {
 	constructor(private readonly llmModel: LanguageModel) {}
 
 	async execute(issue: Issue): Promise<string> {
-		const journalNotes = issue.journals.flatMap((journal) => `${journal.userName}:\n${journal.notes}`).join('\n\n');
-
 		const prompt = Mustache.render(promptTemplate, {
 			subject: issue.subject,
 			description: issue.description,
-			journals: journalNotes,
+			journals: issue.journals.map(journal => ({
+				userName: journal.userName,
+				notes: journal.notes
+			}))
 		});
 
 		const { text } = await generateText({
