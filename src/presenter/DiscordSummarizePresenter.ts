@@ -24,16 +24,19 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 	}
 
 	async render(webhookUrl: string): Promise<boolean> {
-		const formattedText = `## ${this.title}
-${this.description.length > 1900 
-	? this.description.substring(0, 1900) + "...(內容過長，已截斷)" 
-	: this.description}
-
-🔗 ${this.link}
-📝 由 AI 自動翻譯 | 原始內容可能有所不同`;
-
 		const payload = {
-			content: formattedText
+			embeds: [{
+				title: this.title,
+				description: this.description.length > 4000 
+					? this.description.substring(0, 4000) + "...(內容過長，已截斷)" 
+					: this.description,
+				color: 0xCC342D, // Ruby red color
+				url: this.link,
+				footer: {
+					text: "由 AI 自動翻譯 | 原始內容可能有所不同"
+				},
+				timestamp: new Date().toISOString()
+			}]
 		};
 
 		const response = await fetch(webhookUrl, {
