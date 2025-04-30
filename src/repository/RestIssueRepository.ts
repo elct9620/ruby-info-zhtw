@@ -39,13 +39,4 @@ export class RestIssueRepository implements IssueRepository {
 		}
 	}
 	
-	/**
-	 * Extract issue ID from a Ruby issue URL
-	 * @param url The Ruby issue URL (e.g., https://bugs.ruby-lang.org/issues/12345)
-	 * @returns The issue ID as a number, or null if not found
-	 */
-	static extractIssueIdFromUrl(url: string): number | null {
-		const match = url.match(/https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/);
-		return match ? parseInt(match[1], 10) : null;
-	}
 }

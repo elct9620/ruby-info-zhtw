@@ -38,7 +38,8 @@ export default {
 		}
 
 		// Extract issue ID from the link
-		const issueId = RestIssueRepository.extractIssueIdFromUrl(issueLink);
+		const match = issueLink.match(/https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/);
+		const issueId = match ? parseInt(match[1], 10) : null;
 		if (!issueId) {
 			console.error('Failed to extract issue ID from the link.');
 			return;
