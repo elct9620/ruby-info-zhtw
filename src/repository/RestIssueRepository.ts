@@ -13,6 +13,9 @@ type JournalSchema = {
 
 type IssueSchema = {
 	id: number;
+	tracker: {
+		name: string;
+	};
 	subject: string;
 	description: string;
 	journals: JournalSchema[];

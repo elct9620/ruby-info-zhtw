@@ -11,6 +11,7 @@ export class AiSummarizeService implements SummarizeService {
 	async execute(issue: Issue): Promise<string> {
 		const prompt = Mustache.render(promptTemplate, {
 			subject: issue.subject,
+			type: issue.type,
 			description: issue.description,
 			journals: issue.journals.map((journal) => ({
 				userName: journal.userName,

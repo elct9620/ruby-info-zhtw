@@ -1,7 +1,15 @@
 import { Journal } from './Journal';
 
+export enum IssueType {
+	Feature = 'Feature',
+	Bug = 'Bug',
+	Misc = 'Misc',
+	Unknown = 'Unknown',
+}
+
 export class Issue {
 	private _subject: string = '';
+	private _type: IssueType = IssueType.Unknown;
 	private _description: string = '';
 	private _link: string = '';
 	private _journals: Journal[] = [];
@@ -14,6 +22,14 @@ export class Issue {
 
 	set subject(subject: string) {
 		this._subject = subject;
+	}
+
+	get type(): IssueType {
+		return this._type;
+	}
+
+	set type(type: IssueType) {
+		this._type = type;
 	}
 
 	get description(): string {
