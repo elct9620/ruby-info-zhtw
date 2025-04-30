@@ -3,6 +3,8 @@ import { generateText } from 'ai';
 import { env } from 'cloudflare:workers';
 import * as PostalMime from 'postal-mime';
 import { DiscordSummarizePresenter } from './presenter/DiscordSummarizePresenter';
+import { RestIssueRepository } from './repository/RestIssueRepository';
+import { Issue } from './entity/Issue';
 
 const openai = createOpenAI({
 	baseURL: env.CF_AI_GATEWAY ? `${env.CF_AI_GATEWAY}openai` : undefined,
@@ -17,11 +19,6 @@ Translate the following issue description into Traditional Chinese with followin
 3. Use simple and clear language to explain the issue.
 `;
 
-interface Issue {
-	id: number;
-	subject: string;
-	description: string;
-}
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -40,8 +37,20 @@ export default {
 			return;
 		}
 
-		console.log(`Fetching issue from ${issueLink}.json?include=journals`);
-		const { issue } = (await (await fetch(`${issueLink}.json?include=journals`)).json()) as { issue: Issue };
+		// Extract issue ID from the link
+		const issueId = RestIssueRepository.extractIssueIdFromUrl(issueLink);
+		if (!issueId) {
+			console.error('Failed to extract issue ID from the link.');
+			return;
+		}
+
+		// Fetch issue using the repository
+		const repository = new RestIssueRepository();
+		const issue = await repository.findById(issueId);
+		if (!issue) {
+			console.error(`Failed to fetch issue with ID: ${issueId}`);
+			return;
+		}
 
 		const { text } = await generateText({
 			model: openai('gpt-4.1-mini'),
