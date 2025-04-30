@@ -1,25 +1,35 @@
 import { LanguageModel, generateText } from 'ai';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as Mustache from 'mustache';
 
 import { Issue } from '@/entity/Issue';
 import { SummarizeService } from '@/usecase/interface';
 
 export class AiSummarizeService implements SummarizeService {
-	private readonly prompt = `
-Translate the following issue description into Traditional Chinese with following rules:
+	private readonly promptTemplate: string;
 
-1. You MUST use Traditional Chinese (Taiwan) for all translations.
-2. You MUST keep code blocks and formatting in the original format.
-3. Use simple and clear language to explain the issue.
-`;
-
-	constructor(private readonly llmModel: LanguageModel) {}
+	constructor(private readonly llmModel: LanguageModel) {
+		// Load the prompt template from file
+		this.promptTemplate = fs.readFileSync(
+			path.resolve(__dirname, '../prompts/summarize.md'),
+			'utf-8'
+		);
+	}
 
 	async execute(issue: Issue): Promise<string> {
 		const journalNotes = issue.journals.flatMap((journal) => `${journal.userName}:\n${journal.notes}`).join('\n\n');
 
+		// Render the prompt template with issue data
+		const prompt = Mustache.render(this.promptTemplate, {
+			subject: issue.subject,
+			description: issue.description,
+			journals: journalNotes
+		});
+
 		const { text } = await generateText({
 			model: this.llmModel,
-			prompt: `${this.prompt}\n\n Subject: ${issue.subject}\n\nDescription:\n${issue.description}\n\nJournals:\n${journalNotes}`,
+			prompt
 		});
 
 		return text;
