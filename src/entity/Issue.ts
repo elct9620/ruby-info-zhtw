@@ -3,6 +3,7 @@ import { Journal } from './Journal';
 export class Issue {
 	private _subject: string = '';
 	private _description: string = '';
+	private _link: string = '';
 	private _journals: Journal[] = [];
 
 	constructor(public readonly id: number) {}
@@ -21,6 +22,14 @@ export class Issue {
 
 	set description(description: string) {
 		this._description = description;
+	}
+
+	get link(): string {
+		return this._link;
+	}
+
+	set link(link: string) {
+		this._link = link;
 	}
 
 	get journals(): Journal[] {

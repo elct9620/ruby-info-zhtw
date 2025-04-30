@@ -53,7 +53,7 @@ export default {
 		const presenter = new DiscordSummarizePresenter();
 		presenter.setTitle(issue.subject);
 		presenter.setDescription(text);
-		presenter.setLink(issueLink);
+		presenter.setLink(issue.link);
 		await presenter.render(env.DISCORD_WEBHOOK);
 	},
 } satisfies ExportedHandler<Env>;

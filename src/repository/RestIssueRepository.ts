@@ -46,6 +46,7 @@ export class RestIssueRepository implements IssueRepository {
 			const issueEntity = new Issue(issue.id);
 			issueEntity.subject = issue.subject;
 			issueEntity.description = issue.description;
+			issueEntity.link = `${RestIssueRepository.API_URL}/${issue.id}`;
 
 			if (issue.journals && Array.isArray(issue.journals)) {
 				for (const journalData of issue.journals) {
