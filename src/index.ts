@@ -11,46 +11,45 @@ const openai = createOpenAI({
 	apiKey: env.OPENAI_API_KEY,
 });
 
-
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
-		return new Response('Hello World!');
+		return new Response('Ruby Information Bot');
 	},
 	async email(message, env, ctx) {
 		// Create email dispatcher
 		const dispatcher = new EmailDispatcher(env.ADMIN_EMAIL);
-		
+
 		// Process the email
 		const rawEmail = new Response(message.raw);
 		const route = await dispatcher.execute(await rawEmail.arrayBuffer());
-		
+
 		// Handle the route
 		switch (route.type) {
 			case EmailDispatchType.Summarize:
 				try {
 					const { issueId } = route.params;
-					
+
 					// Create dependencies
 					const repository = new RestIssueRepository();
 					const summarizeService = new AiSummarizeService(openai('gpt-4.1-mini'));
 					const presenter = new DiscordSummarizePresenter();
-					
+
 					// Create and execute the use case
 					const useCase = new SummarizeUsecase(repository, summarizeService, presenter);
 					await useCase.execute(issueId);
-					
+
 					// Render the result to Discord
 					await presenter.render(env.DISCORD_WEBHOOK);
 				} catch (error) {
 					console.error(`Error processing issue:`, error);
 				}
 				break;
-				
+
 			case EmailDispatchType.ForwardAdmin:
 				console.log(`Forwarding email to admin: ${route.text}`);
 				await message.forward(route.params.adminEmail);
 				break;
-				
+
 			case EmailDispatchType.Reject:
 				console.log(`Rejecting email: ${route.text}`);
 				message.setReject(route.text);
