@@ -6,6 +6,9 @@ import { SessionCookieName } from '@/constant';
 import { SessionCipher } from '@/service/SessionCipher';
 import { discordAuth } from '@hono/oauth-providers/discord';
 
+const allowGuildId = '1245197991191642262';
+const allowGuildRoleId = '1367854918874173576';
+
 const route = new Hono().get(
 	'/discord',
 	discordAuth({
