@@ -1,20 +1,24 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { env } from 'cloudflare:workers';
-import { DiscordSummarizePresenter } from './presenter/DiscordSummarizePresenter';
-import { RestIssueRepository } from './repository/RestIssueRepository';
-import { AiSummarizeService } from './service/AiSummarizeService';
-import { EmailDispatcher, EmailDispatchType } from './service/EmailDispatcher';
-import { SummarizeUsecase } from './usecase/SummarizeUsecase';
+import { Hono } from 'hono';
+
+import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
+import { RestIssueRepository } from '@/repository/RestIssueRepository';
+import { AiSummarizeService } from '@/service/AiSummarizeService';
+import { EmailDispatcher, EmailDispatchType } from '@/service/EmailDispatcher';
+import { SummarizeUsecase } from '@/usecase/SummarizeUsecase';
 
 const openai = createOpenAI({
 	baseURL: env.CF_AI_GATEWAY ? `${env.CF_AI_GATEWAY}openai` : undefined,
 	apiKey: env.OPENAI_API_KEY,
 });
 
+const app = new Hono();
+
+app.get('/', (c) => c.text('Ruby Information Bot'));
+
 export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		return new Response('Ruby Information Bot');
-	},
+	fetch: app.fetch,
 	async email(message, env, ctx) {
 		// Create email dispatcher
 		const dispatcher = new EmailDispatcher(env.ADMIN_EMAIL);
