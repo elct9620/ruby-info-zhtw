@@ -4,6 +4,7 @@ import { setCookie } from 'hono/cookie';
 
 import { SessionCookieName } from '@/constant';
 import { SessionCipher } from '@/service/SessionCipher';
+import { DiscordRoleAccessService } from '@/service/DiscordRoleAccessService';
 import { discordAuth } from '@hono/oauth-providers/discord';
 
 type DiscordGuideMember = {
@@ -26,7 +27,8 @@ const route = new Hono().get(
 		const displayName = user?.global_name || user?.username || user?.id || 'Anonymous';
 
 		// 驗證用戶是否在指定公會中擁有有效角色
-		const hasValidRole = await verifyGuildMemberRole(token?.token, user?.id);
+		const roleAccessService = new DiscordRoleAccessService(allowGuildId, allowGuildRoleId);
+		const hasValidRole = await roleAccessService.isAllowed(token?.token, user?.id);
 
 		if (!hasValidRole) {
 			return c.text('You do not have permission to access this resource.', 403);
@@ -47,35 +49,5 @@ const route = new Hono().get(
 	},
 );
 
-/**
- * 驗證用戶是否在指定公會中擁有有效角色
- * @param token Discord OAuth 訪問令牌
- * @param userId Discord 用戶 ID
- * @returns 如果用戶在公會中並擁有有效角色，則返回 true
- */
-async function verifyGuildMemberRole(token?: string, userId?: string): Promise<boolean> {
-	if (!userId || !token) return false;
-
-	try {
-		const memberResponse = await fetch(`https://discord.com/api/v10/users/@me/guilds/${allowGuildId}/member`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-				'Content-Type': 'application/json',
-			},
-		});
-
-		if (!memberResponse.ok) {
-			console.error('無法獲取用戶在公會中的角色:', await memberResponse.text());
-			return false;
-		}
-
-		const memberData = (await memberResponse.json()) as DiscordGuideMember;
-
-		return memberData.roles.includes(allowGuildRoleId);
-	} catch (error) {
-		console.error('驗證 Discord 角色時出錯:', error);
-		return false;
-	}
-}
 
 export default route;
