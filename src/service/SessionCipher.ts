@@ -10,7 +10,6 @@ export class SessionCipher {
 		const encoder = new TextEncoder();
 		const data = encoder.encode(JSON.stringify(session));
 		const iv = crypto.getRandomValues(new Uint8Array(16));
-		// 解碼 base64 金鑰
 		const keyData = Uint8Array.from(atob(this.key), (c) => c.charCodeAt(0));
 		const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-CBC' }, false, ['encrypt']);
 		const cipherText = await crypto.subtle.encrypt(
@@ -36,7 +35,6 @@ export class SessionCipher {
 			const iv = data.slice(0, 16);
 			const cipherData = data.slice(16);
 
-			// 解碼 base64 金鑰
 			const keyData = Uint8Array.from(atob(this.key), (c) => c.charCodeAt(0));
 			const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-CBC' }, false, ['decrypt']);
 
