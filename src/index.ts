@@ -17,7 +17,7 @@ const openai = createOpenAI({
 const app = new Hono();
 
 app.use(
-	'/discord',
+	'/auth/discord',
 	discordAuth({
 		client_id: env.DISCORD_CLIENT_ID,
 		client_secret: env.DISCORD_CLIENT_SECRET,
@@ -26,7 +26,7 @@ app.use(
 );
 
 app.get('/', (c) => c.text('Ruby Information Bot'));
-app.get('/discord', (c) => c.text(`Hi, ${c.get('user-discord')?.username}`));
+app.get('/auth/discord', (c) => c.text(`Hi, ${c.get('user-discord')?.username}`));
 
 export default {
 	fetch: app.fetch,
