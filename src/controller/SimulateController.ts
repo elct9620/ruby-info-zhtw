@@ -27,7 +27,7 @@ const authMiddleware = createMiddleware<{
 	await next();
 });
 
-const route = new Hono().use(authMiddleware).get('/simulate', async (c) => {
+const route = new Hono().use(authMiddleware).get('/', async (c) => {
 	return c.text(`Hello, ${c.get('session').displayName}, this feature is not implemented yet.`);
 });
 
