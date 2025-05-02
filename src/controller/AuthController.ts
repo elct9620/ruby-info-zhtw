@@ -27,7 +27,7 @@ const route = new Hono().get(
 			secure: true,
 		});
 
-		return c.json(user);
+		return c.redirect('/simulate', 302);
 	},
 );
 
