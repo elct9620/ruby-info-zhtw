@@ -17,6 +17,7 @@ const route = new Hono().get(
 
 		const sessionCookie = getCookie(c, SessionCookieName);
 		if (sessionCookie) {
+			console.debug(sessionCookie);
 			const session = await cipher.decrypt(sessionCookie);
 			if (session) {
 				return c.json(session);
