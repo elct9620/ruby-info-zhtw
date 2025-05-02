@@ -5,17 +5,16 @@ export type Session = {
 
 export class SessionCipher {
 	constructor(private readonly key: string) {}
-	
-	private decodeBase64(base64String: string): Uint8Array {
-		return Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
+
+	get keyData() {
+		return new TextEncoder().encode(this.key);
 	}
 
 	async encrypt(session: Session): Promise<string> {
 		const encoder = new TextEncoder();
 		const data = encoder.encode(JSON.stringify(session));
 		const iv = crypto.getRandomValues(new Uint8Array(16));
-		const keyData = this.decodeBase64(this.key);
-		const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-CBC' }, false, ['encrypt']);
+		const key = await crypto.subtle.importKey('raw', this.keyData, { name: 'AES-CBC' }, false, ['encrypt']);
 		const cipherText = await crypto.subtle.encrypt(
 			{
 				name: 'AES-CBC',
@@ -35,13 +34,15 @@ export class SessionCipher {
 	async decrypt(cipherText: string): Promise<Session | null> {
 		try {
 			const decoder = new TextDecoder();
-			const data = this.decodeBase64(cipherText);
+			const data = new Uint8Array(
+				atob(cipherText)
+					.split('')
+					.map((c) => c.charCodeAt(0)),
+			);
 			const iv = data.slice(0, 16);
 			const cipherData = data.slice(16);
 
-			const keyData = this.decodeBase64(this.key);
-			const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-CBC' }, false, ['decrypt']);
-
+			const key = await crypto.subtle.importKey('raw', this.keyData, { name: 'AES-CBC' }, false, ['decrypt']);
 			const decryptedData = await crypto.subtle.decrypt(
 				{
 					name: 'AES-CBC',
