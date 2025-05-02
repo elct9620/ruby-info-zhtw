@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 
+import { SessionCookieName } from '@/constant';
 import { Session, SessionCipher } from '@/service/SessionCipher';
 import { createMiddleware } from 'hono/factory';
 
@@ -10,7 +11,7 @@ const authMiddleware = createMiddleware<{
 		session: Session;
 	};
 }>(async (c, next) => {
-	const sessionCookie = getCookie(c, 'session');
+	const sessionCookie = getCookie(c, SessionCookieName);
 	if (!sessionCookie) {
 		return c.text('Unauthorized', 401);
 	}
