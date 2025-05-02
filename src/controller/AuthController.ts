@@ -1,9 +1,10 @@
-import { SessionCookieName } from '@/constant';
-import { SessionCipher } from '@/service/SessionCipher';
-import { discordAuth } from '@hono/oauth-providers/discord';
 import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { setCookie } from 'hono/cookie';
+
+import { SessionCookieName } from '@/constant';
+import { SessionCipher } from '@/service/SessionCipher';
+import { discordAuth } from '@hono/oauth-providers/discord';
 
 const route = new Hono().get(
 	'/discord',

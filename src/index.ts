@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 
 import AuthRoute from '@/controller/AuthController';
+import SimulateRoute from '@/controller/SimulateController';
 import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
 import { RestIssueRepository } from '@/repository/RestIssueRepository';
 import { AiSummarizeService } from '@/service/AiSummarizeService';
@@ -18,6 +19,7 @@ const app = new Hono();
 
 app.get('/', (c) => c.text('Ruby Information Bot'));
 app.route('/auth', AuthRoute);
+app.route('/simulate', SimulateRoute);
 
 export default {
 	fetch: app.fetch,
