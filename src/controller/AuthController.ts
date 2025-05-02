@@ -50,23 +50,45 @@ const route = new Hono().get(
  * @returns 如果用戶在公會中並擁有有效角色，則返回 true
  */
 async function verifyGuildMemberRole(token: string, userId?: string): Promise<boolean> {
-	if (!userId) return false;
+	if (!userId || !token) return false;
 	
 	try {
-		// 獲取用戶在指定公會中的成員資訊
-		const response = await fetch(`https://discord.com/api/v10/guilds/${allowGuildId}/members/${userId}`, {
+		// 首先獲取用戶所屬的公會列表
+		const guildsResponse = await fetch('https://discord.com/api/v10/users/@me/guilds', {
 			headers: {
-				Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
+				Authorization: `Bearer ${token}`,
 				'Content-Type': 'application/json',
 			},
 		});
 		
-		if (!response.ok) {
-			console.error('無法獲取公會成員資訊:', await response.text());
+		if (!guildsResponse.ok) {
+			console.error('無法獲取用戶公會列表:', await guildsResponse.text());
 			return false;
 		}
 		
-		const memberData = await response.json();
+		const guilds = await guildsResponse.json();
+		
+		// 檢查用戶是否在目標公會中
+		const isInGuild = guilds.some((guild: any) => guild.id === allowGuildId);
+		if (!isInGuild) {
+			console.error('用戶不在指定公會中');
+			return false;
+		}
+		
+		// 獲取用戶在指定公會中的角色
+		const memberResponse = await fetch(`https://discord.com/api/v10/users/@me/guilds/${allowGuildId}/member`, {
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json',
+			},
+		});
+		
+		if (!memberResponse.ok) {
+			console.error('無法獲取用戶在公會中的角色:', await memberResponse.text());
+			return false;
+		}
+		
+		const memberData = await memberResponse.json();
 		
 		// 檢查用戶是否擁有指定角色
 		return memberData.roles.includes(allowGuildRoleId);
