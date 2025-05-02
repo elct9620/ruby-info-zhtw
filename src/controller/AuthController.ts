@@ -33,7 +33,7 @@ const route = new Hono().get(
 
 		setCookie(c, SessionCookieName, session, {
 			httpOnly: true,
-			sameSite: 'Strict',
+			sameSite: 'Lax',
 			secure: true,
 		});
 
