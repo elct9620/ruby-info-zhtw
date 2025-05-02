@@ -1,4 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
+import { discordAuth } from '@hono/oauth-providers/discord';
 import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 
@@ -15,7 +16,17 @@ const openai = createOpenAI({
 
 const app = new Hono();
 
+app.use(
+	'/discord',
+	discordAuth({
+		client_id: env.DISCORD_CLIENT_ID,
+		client_secret: env.DISCORD_CLIENT_SECRET,
+		scope: ['identify', 'guilds.members.read'],
+	}),
+);
+
 app.get('/', (c) => c.text('Ruby Information Bot'));
+app.get('/discord', (c) => c.text(`Hi, ${c.get('user-discord')?.username}`));
 
 export default {
 	fetch: app.fetch,
