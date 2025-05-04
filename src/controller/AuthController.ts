@@ -1,7 +1,7 @@
-import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { setCookie } from 'hono/cookie';
 
+import config from '@/config';
 import { SessionCookieName } from '@/constant';
 import { DiscordRoleAccessService } from '@/service/DiscordRoleAccessService';
 import { SessionCipher } from '@/service/SessionCipher';
@@ -13,8 +13,8 @@ const allowGuildRoleId = '1367854918874173576';
 const route = new Hono().get(
 	'/discord',
 	discordAuth({
-		client_id: env.DISCORD_CLIENT_ID,
-		client_secret: env.DISCORD_CLIENT_SECRET,
+		client_id: config.discordClientId,
+		client_secret: config.discordClientSecret,
 		scope: ['identify', 'guilds.members.read'],
 	}),
 	async (c) => {
@@ -31,7 +31,7 @@ const route = new Hono().get(
 
 		const expiredAt = new Date().getTime() + 24 * 60 * 60 * 1000;
 
-		const cipher = new SessionCipher(env.SECRET_KEY_BASE);
+		const cipher = new SessionCipher(config.secretKeyBase);
 		const session = await cipher.encrypt({ displayName, expiredAt });
 
 		setCookie(c, SessionCookieName, session, {

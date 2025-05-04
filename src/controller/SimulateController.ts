@@ -1,7 +1,7 @@
-import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 
+import config from '@/config';
 import { SessionCookieName } from '@/constant';
 import { Session, SessionCipher } from '@/service/SessionCipher';
 import { createMiddleware } from 'hono/factory';
@@ -16,7 +16,7 @@ const authMiddleware = createMiddleware<{
 		return c.text('Unauthorized', 401);
 	}
 
-	const cipher = new SessionCipher(env.SECRET_KEY_BASE);
+	const cipher = new SessionCipher(config.secretKeyBase);
 	const session = await cipher.decrypt(sessionCookie);
 	if (!session) {
 		return c.text('Unauthorized', 401);
