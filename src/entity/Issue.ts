@@ -11,6 +11,8 @@ export class Issue {
 	private _subject: string = '';
 	private _type: IssueType = IssueType.Unknown;
 	private _description: string = '';
+	private _authorName: string = '';
+	private _assigneeName: string | null = null;
 	private _link: string = '';
 	private _journals: Journal[] = [];
 
@@ -38,6 +40,26 @@ export class Issue {
 
 	set description(description: string) {
 		this._description = description;
+	}
+
+	get authorName(): string {
+		return this._authorName;
+	}
+
+	set authorName(authorName: string) {
+		this._authorName = authorName;
+	}
+
+	get assigneeName(): string | null {
+		return this._assigneeName;
+	}
+
+	assignTo(assigneeName: string | null): void {
+		this._assigneeName = assigneeName;
+	}
+
+	isAssigned(): boolean {
+		return this._assigneeName !== null;
 	}
 
 	get link(): string {

@@ -55,13 +55,8 @@ export class RestIssueRepository implements IssueRepository {
 			issueEntity.description = issue.description;
 			issueEntity.link = `${RestIssueRepository.API_URL}/${issue.id}`;
 			issueEntity.type = this.mapTrackerToIssueType(issue.tracker?.name);
-			
-			// 設置作者信息
-			if (issue.author && issue.author.name) {
-				issueEntity.authorName = issue.author.name;
-			}
-			
-			// 設置指派者信息
+			issueEntity.authorName = issue.author.name;
+
 			if (issue.assigned_to && issue.assigned_to.name) {
 				issueEntity.assignTo(issue.assigned_to.name);
 			}
@@ -69,7 +64,7 @@ export class RestIssueRepository implements IssueRepository {
 			if (issue.journals && Array.isArray(issue.journals)) {
 				for (const journalData of issue.journals) {
 					const journal = new Journal(journalData.id);
-					journal.userName = journalData.user?.name || '';
+					journal.userName = journalData.user.name;
 					journal.notes = journalData.notes || '';
 					issueEntity.addJournal(journal);
 				}
