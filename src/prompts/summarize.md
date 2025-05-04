@@ -14,6 +14,10 @@ Below is the issue information:
 
 Subject: {{subject}}
 Type: {{type}}
+Author: {{authorName}}
+{{#assigneeName}}
+Assignee: {{assigneeName}}
+{{/assigneeName}}
 
 Description:
 {{description}}

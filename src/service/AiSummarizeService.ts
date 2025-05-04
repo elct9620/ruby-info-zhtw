@@ -12,15 +12,19 @@ export class AiSummarizeService implements SummarizeService {
 		// Get the latest journal if available
 		const journals = issue.journals;
 		const latestJournal = journals.length > 0 ? journals[journals.length - 1] : null;
-		
+
 		const prompt = Mustache.render(promptTemplate, {
 			subject: issue.subject,
 			type: issue.type,
 			description: issue.description,
-			latestJournal: latestJournal ? {
-				userName: latestJournal.userName,
-				notes: latestJournal.notes,
-			} : null,
+			authorName: issue.authorName,
+			assigneeName: issue.assigneeName,
+			latestJournal: latestJournal
+				? {
+						userName: latestJournal.userName,
+						notes: latestJournal.notes,
+					}
+				: null,
 			journals: journals.map((journal) => ({
 				userName: journal.userName,
 				notes: journal.notes,
