@@ -55,6 +55,16 @@ export class RestIssueRepository implements IssueRepository {
 			issueEntity.description = issue.description;
 			issueEntity.link = `${RestIssueRepository.API_URL}/${issue.id}`;
 			issueEntity.type = this.mapTrackerToIssueType(issue.tracker?.name);
+			
+			// 設置作者信息
+			if (issue.author && issue.author.name) {
+				issueEntity.authorName = issue.author.name;
+			}
+			
+			// 設置指派者信息
+			if (issue.assigned_to && issue.assigned_to.name) {
+				issueEntity.assignTo(issue.assigned_to.name);
+			}
 
 			if (issue.journals && Array.isArray(issue.journals)) {
 				for (const journalData of issue.journals) {
