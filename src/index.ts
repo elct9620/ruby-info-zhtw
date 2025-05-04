@@ -1,5 +1,4 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 
 import AuthRoute from '@/controller/AuthController';
@@ -9,10 +8,11 @@ import { RestIssueRepository } from '@/repository/RestIssueRepository';
 import { AiSummarizeService } from '@/service/AiSummarizeService';
 import { EmailDispatcher, EmailDispatchType } from '@/service/EmailDispatcher';
 import { SummarizeUsecase } from '@/usecase/SummarizeUsecase';
+import config from './config';
 
 const openai = createOpenAI({
-	baseURL: env.CF_AI_GATEWAY ? `${env.CF_AI_GATEWAY}openai` : undefined,
-	apiKey: env.OPENAI_API_KEY,
+	baseURL: config.openAiGateway,
+	apiKey: config.openAiApiKey,
 });
 
 const app = new Hono();
@@ -25,7 +25,7 @@ export default {
 	fetch: app.fetch,
 	async email(message, env, ctx) {
 		// Create email dispatcher
-		const dispatcher = new EmailDispatcher(env.ADMIN_EMAIL);
+		const dispatcher = new EmailDispatcher(config.adminEmail);
 
 		// Process the email
 		const rawEmail = new Response(message.raw);
@@ -47,7 +47,7 @@ export default {
 					await useCase.execute(issueId);
 
 					// Render the result to Discord
-					await presenter.render(env.DISCORD_WEBHOOK);
+					await presenter.render(config.discordWebhook);
 				} catch (error) {
 					console.error(`Error processing issue:`, error);
 				}
