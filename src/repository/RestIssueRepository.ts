@@ -2,12 +2,14 @@ import { Issue, IssueType } from '@/entity/Issue';
 import { Journal } from '@/entity/Journal';
 import { IssueRepository } from '@/usecase/interface';
 
+type UserSchema = {
+	id: number;
+	name: string;
+};
+
 type JournalSchema = {
 	id: number;
-	user: {
-		id: number;
-		name: string;
-	};
+	user: UserSchema;
 	notes: string;
 };
 
@@ -18,6 +20,8 @@ type IssueSchema = {
 	};
 	subject: string;
 	description: string;
+	author: UserSchema;
+	assigned_to?: UserSchema;
 	journals: JournalSchema[];
 };
 
@@ -75,7 +79,7 @@ export class RestIssueRepository implements IssueRepository {
 	 */
 	private mapTrackerToIssueType(trackerName?: string): IssueType {
 		if (!trackerName) return IssueType.Unknown;
-		
+
 		switch (trackerName.toLowerCase()) {
 			case 'feature':
 				return IssueType.Feature;
