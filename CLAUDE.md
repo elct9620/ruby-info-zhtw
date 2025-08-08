@@ -4,65 +4,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Ruby Information Bot that processes Ruby mailing list emails and summarizes them in Traditional Chinese for the Ruby Taiwan community. It runs on Cloudflare Workers and integrates with Discord.
+This is a Ruby Information Bot that processes Ruby mailing list emails and summarizes them in Traditional Chinese for the Ruby Taiwan community. It runs on Cloudflare Workers and integrates with Discord. The bot subscribes to Ruby Core mailing list and automatically processes incoming emails.
 
 ## Common Development Commands
 
-**Development:**
 ```bash
-npm run dev      # Start development server with Wrangler
-npm start        # Alias for npm run dev
-```
-
-**Testing:**
-```bash
-npm test         # Run tests with Vitest
-```
-
-**Deployment:**
-```bash
-npm run deploy   # Deploy to Cloudflare Workers
-```
-
-**Type Generation:**
-```bash
-npm run cf-typegen  # Generate Cloudflare types
+npm run dev         # Start development server with Wrangler
+npm start           # Alias for npm run dev
+npm test            # Run tests with Vitest
+npm run deploy      # Deploy to Cloudflare Workers
+npm run cf-typegen  # Generate Cloudflare types from wrangler.jsonc
 ```
 
 ## Architecture Overview
 
 This project follows Clean Architecture principles with clear separation of concerns:
 
-- **`/src/controller/`** - HTTP route handlers (auth, simulate, email processing)
+- **`/src/controller/`** - HTTP route handlers (auth, simulate)
 - **`/src/entity/`** - Domain entities (Issue, Journal)
-- **`/src/repository/`** - Data access layer for journals and issues
-- **`/src/service/`** - Business services (Discord, OpenAI, simulation)
-- **`/src/usecase/`** - Use cases implementing business logic
-- **`/src/presenter/`** - Presentation layer for Discord integration
-- **`/src/config/`** - Configuration management (Cloudflare bindings)
+- **`/src/repository/`** - Data access layer (RestIssueRepository)
+- **`/src/service/`** - Business services (AiSummarizeService, DiscordRoleAccessService, EmailDispatcher, SessionCipher)
+- **`/src/usecase/`** - Use cases implementing business logic (SummarizeUsecase)
+- **`/src/presenter/`** - Presentation layer for Discord (DiscordSummarizePresenter)
+- **`/src/config.ts`** - Configuration management using CloudflareConfig class
 
-**Key architectural patterns:**
-- Repository pattern for data access
-- Use case pattern for business logic
-- Service layer for external integrations
-- Presenter pattern for Discord message formatting
+### Email Processing Flow
 
-## Technology Stack
+1. Emails sent to `core@ruby.aotoki.cloud` trigger the `email` export handler
+2. EmailDispatcher routes emails based on rules (summarize, forward to admin, or reject)
+3. For summarization: SummarizeUsecase fetches issue data, generates AI summary, and sends to Discord
 
-- **Runtime**: Cloudflare Workers
-- **Language**: TypeScript (ES2021 target, strict mode)
-- **Web Framework**: Hono
-- **Test Framework**: Vitest with Cloudflare Workers pool
-- **AI Integration**: AI SDK with OpenAI
-- **Email Processing**: Postal MIME
-- **Template Engine**: Mustache
-- **Code Formatting**: Prettier (140 char width, single quotes, tabs)
+### Key Dependencies
 
-## Important Configuration
+- **Hono**: Web framework for HTTP routes
+- **AI SDK with OpenAI**: For generating summaries (uses GPT-4.1-mini)
+- **Postal MIME**: Email parsing
+- **Mustache**: Template rendering for summaries
 
-- **TypeScript**: Path alias `@/*` maps to `src/*`
-- **Cloudflare**: Configuration in `wrangler.jsonc`
-- **Environment**: Cloudflare bindings accessed via `config.get()`
+## Configuration
+
+- **TypeScript**: Path alias `@/*` maps to `src/*`, ES2021 target, strict mode
+- **Cloudflare**: Configuration in `wrangler.jsonc`, email handler configured for core@ruby.aotoki.cloud
+- **Environment Variables**: Accessed via CloudflareConfig class from Cloudflare bindings
+  - ADMIN_EMAIL, DISCORD_WEBHOOK, DISCORD_CLIENT_ID/SECRET
+  - OPENAI_API_KEY, CF_AI_GATEWAY (optional)
+  - SECRET_KEY_BASE
+- **Prettier**: 140 char width, single quotes, tabs, with import organization
+
+## Testing
+
+Tests use Vitest with Cloudflare Workers pool. Test files should be in `/test` directory with `.spec.ts` extension.
 
 ## Coding Conventions
 
