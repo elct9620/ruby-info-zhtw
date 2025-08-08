@@ -39,7 +39,7 @@ export default {
 
 					// Create dependencies
 					const repository = new RestIssueRepository();
-					const summarizeService = new AiSummarizeService(openai('gpt-4.1-mini'));
+					const summarizeService = new AiSummarizeService(openai('gpt-5-mini'));
 					const presenter = new DiscordSummarizePresenter();
 
 					// Create and execute the use case

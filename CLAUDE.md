@@ -37,7 +37,7 @@ This project follows Clean Architecture principles with clear separation of conc
 ### Key Dependencies
 
 - **Hono**: Web framework for HTTP routes
-- **AI SDK with OpenAI**: For generating summaries (uses GPT-4.1-mini)
+- **AI SDK with OpenAI**: For generating summaries (uses GPT-5-mini)
 - **Postal MIME**: Email parsing
 - **Mustache**: Template rendering for summaries
 
