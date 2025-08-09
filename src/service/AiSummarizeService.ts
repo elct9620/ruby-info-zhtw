@@ -34,6 +34,7 @@ export class AiSummarizeService implements SummarizeService {
 		const { text } = await generateText({
 			model: this.llmModel,
 			prompt,
+			temperature: 1,
 		});
 
 		return text;
