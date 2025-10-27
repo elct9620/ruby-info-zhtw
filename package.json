@@ -15,7 +15,7 @@
 		"prettier-plugin-organize-imports": "^4.1.0",
 		"typescript": "^5.5.2",
 		"vite-tsconfig-paths": "^5.1.4",
-		"vitest": "~3.2.4",
+		"vitest": "~4.0.3",
 		"wrangler": "^4.45.0"
 	},
 	"dependencies": {
