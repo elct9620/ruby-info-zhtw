@@ -23,7 +23,7 @@
 		"@hono/oauth-providers": "^0.8.5",
 		"@types/mustache": "^4.2.5",
 		"@types/node": "^24.9.1",
-		"ai": "^5.0.43",
+		"ai": "^5.0.80",
 		"hono": "^4.10.3",
 		"mustache": "^4.2.0",
 		"postal-mime": "^2.4.3",
