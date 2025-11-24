@@ -24,7 +24,7 @@
 		"@types/mustache": "^4.2.5",
 		"@types/node": "^24.10.1",
 		"ai": "^5.0.89",
-		"hono": "^4.10.4",
+		"hono": "^4.10.6",
 		"mustache": "^4.2.0",
 		"postal-mime": "^2.6.0",
 		"zod": "^4.1.13"
