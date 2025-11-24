@@ -19,7 +19,7 @@
 		"wrangler": "^4.50.0"
 	},
 	"dependencies": {
-		"@ai-sdk/openai": "^2.0.64",
+		"@ai-sdk/openai": "^2.0.71",
 		"@hono/oauth-providers": "^0.8.5",
 		"@types/mustache": "^4.2.5",
 		"@types/node": "^24.10.1",
