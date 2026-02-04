@@ -59,6 +59,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 | Summary generation prompt | Discord Webhook API |
 | Discord Embed format and colors | Ruby Bug Tracker REST API |
 | Session encryption mechanism | OpenAI API |
+| | Langfuse (optional, for observability) |
 
 ---
 
@@ -81,6 +82,20 @@ Routing decisions after email reception:
 - `ml.ruby-lang.org`
 
 ### Summarization
+
+#### Observability
+
+AI summarization uses Langfuse for tracing via OpenTelemetry integration:
+
+| Telemetry Property | Value |
+|--------------------|-------|
+| `isEnabled` | `true` |
+| `functionId` | `summarize-issue` |
+| `metadata.issueId` | Issue ID being summarized |
+
+Traces are exported to Langfuse for monitoring AI model usage, latency, and costs.
+
+#### Issue Type Presentation
 
 Issue type to visual presentation mapping:
 
@@ -166,6 +181,7 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Discord API | `https://discord.com/api/v10/users/@me/guilds/{guildId}/member` | Verify user roles |
 | Discord Webhook | Configured Webhook URL | Send summary messages |
 | OpenAI API | Via AI SDK | Generate Chinese summaries |
+| Langfuse | Via OpenTelemetry | Trace AI requests for observability |
 
 ---
 
@@ -189,6 +205,9 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Variable | Purpose |
 |----------|---------|
 | `CF_AI_GATEWAY` | Cloudflare AI Gateway URL (for proxying OpenAI requests) |
+| `LANGFUSE_SECRET_KEY` | Langfuse secret key for trace export |
+| `LANGFUSE_PUBLIC_KEY` | Langfuse public key for trace export |
+| `LANGFUSE_BASEURL` | Langfuse API endpoint (default: `https://cloud.langfuse.com`) |
 
 ---
 
