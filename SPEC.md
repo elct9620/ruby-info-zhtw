@@ -207,7 +207,7 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | `CF_AI_GATEWAY` | Cloudflare AI Gateway URL (for proxying OpenAI requests) |
 | `LANGFUSE_SECRET_KEY` | Langfuse secret key for trace export |
 | `LANGFUSE_PUBLIC_KEY` | Langfuse public key for trace export |
-| `LANGFUSE_BASEURL` | Langfuse API endpoint (default: `https://cloud.langfuse.com`) |
+| `LANGFUSE_BASE_URL` | Langfuse API endpoint (default: `https://cloud.langfuse.com`) |
 
 ---
 

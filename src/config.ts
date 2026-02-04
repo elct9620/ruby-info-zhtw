@@ -63,7 +63,7 @@ export class CloudflareConfig {
 	}
 
 	get langfuseBaseUrl(): string {
-		return this.env.LANGFUSE_BASEURL || 'https://cloud.langfuse.com';
+		return this.env.LANGFUSE_BASE_URL || 'https://cloud.langfuse.com';
 	}
 }
 

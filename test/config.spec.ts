@@ -14,7 +14,7 @@ type MockEnv = Pick<
 	| 'CF_AI_GATEWAY'
 	| 'LANGFUSE_SECRET_KEY'
 	| 'LANGFUSE_PUBLIC_KEY'
-	| 'LANGFUSE_BASEURL'
+	| 'LANGFUSE_BASE_URL'
 >;
 
 describe('CloudflareConfig', () => {
@@ -160,14 +160,14 @@ describe('CloudflareConfig', () => {
 	});
 
 	describe('langfuseBaseUrl', () => {
-		it('returns LANGFUSE_BASEURL from env when set', () => {
-			const env = createMockEnv({ LANGFUSE_BASEURL: 'https://custom.langfuse.com' } as Partial<MockEnv>);
+		it('returns LANGFUSE_BASE_URL from env when set', () => {
+			const env = createMockEnv({ LANGFUSE_BASE_URL: 'https://custom.langfuse.com' } as Partial<MockEnv>);
 			const config = new CloudflareConfig(env);
 
 			expect(config.langfuseBaseUrl).toBe('https://custom.langfuse.com');
 		});
 
-		it('returns default URL when LANGFUSE_BASEURL is not set', () => {
+		it('returns default URL when LANGFUSE_BASE_URL is not set', () => {
 			const env = createMockEnv();
 			const config = new CloudflareConfig(env);
 

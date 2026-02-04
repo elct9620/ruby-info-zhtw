@@ -18,7 +18,7 @@ declare namespace Cloudflare {
 		DISCORD_ALLOW_ROLE_ID: string;
 		LANGFUSE_SECRET_KEY: string;
 		LANGFUSE_PUBLIC_KEY: string;
-		LANGFUSE_BASEURL: string;
+		LANGFUSE_BASE_URL: string;
 	}
 }
 interface Env extends Cloudflare.Env {}
@@ -26,7 +26,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "CF_AI_GATEWAY" | "OPENAI_API_KEY" | "DISCORD_WEBHOOK" | "DISCORD_CLIENT_ID" | "DISCORD_CLIENT_SECRET" | "SECRET_KEY_BASE" | "ADMIN_EMAIL" | "DISCORD_ALLOW_GUILD_ID" | "DISCORD_ALLOW_ROLE_ID" | "LANGFUSE_SECRET_KEY" | "LANGFUSE_PUBLIC_KEY" | "LANGFUSE_BASEURL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "CF_AI_GATEWAY" | "OPENAI_API_KEY" | "DISCORD_WEBHOOK" | "DISCORD_CLIENT_ID" | "DISCORD_CLIENT_SECRET" | "SECRET_KEY_BASE" | "ADMIN_EMAIL" | "DISCORD_ALLOW_GUILD_ID" | "DISCORD_ALLOW_ROLE_ID" | "LANGFUSE_SECRET_KEY" | "LANGFUSE_PUBLIC_KEY" | "LANGFUSE_BASE_URL">> {}
 }
 declare module "*.md" {
 	const value: string;
