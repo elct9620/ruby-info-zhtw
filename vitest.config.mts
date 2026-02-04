@@ -9,5 +9,12 @@ export default defineWorkersConfig({
 				wrangler: { configPath: './wrangler.jsonc' },
 			},
 		},
+		coverage: {
+			provider: 'istanbul',
+			reporter: ['text', 'lcov', 'html'],
+			reportsDirectory: './coverage',
+			include: ['src/**/*.ts'],
+			exclude: ['src/index.ts'],
+		},
 	},
 });

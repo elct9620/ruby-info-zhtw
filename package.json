@@ -7,10 +7,12 @@
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"test": "vitest",
+		"test:coverage": "vitest run --coverage",
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.12.8",
+		"@vitest/coverage-istanbul": "~3.2.4",
 		"prettier": "3.8.1",
 		"prettier-plugin-organize-imports": "^4.1.0",
 		"typescript": "^5.5.2",
