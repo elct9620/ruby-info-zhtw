@@ -12,6 +12,9 @@ type MockEnv = Pick<
 	| 'DISCORD_ALLOW_GUILD_ID'
 	| 'DISCORD_ALLOW_ROLE_ID'
 	| 'CF_AI_GATEWAY'
+	| 'LANGFUSE_SECRET_KEY'
+	| 'LANGFUSE_PUBLIC_KEY'
+	| 'LANGFUSE_BASEURL'
 >;
 
 describe('CloudflareConfig', () => {
@@ -121,6 +124,54 @@ describe('CloudflareConfig', () => {
 			const config = new CloudflareConfig(env);
 
 			expect(config.openAiGateway).toBe('https://gateway.ai.cloudflare.com/v1/account/gatewayopenai');
+		});
+	});
+
+	describe('langfuseSecretKey', () => {
+		it('returns LANGFUSE_SECRET_KEY from env', () => {
+			const env = createMockEnv({ LANGFUSE_SECRET_KEY: 'sk-lf-test' } as Partial<MockEnv>);
+			const config = new CloudflareConfig(env);
+
+			expect(config.langfuseSecretKey).toBe('sk-lf-test');
+		});
+
+		it('returns undefined when LANGFUSE_SECRET_KEY is not set', () => {
+			const env = createMockEnv();
+			const config = new CloudflareConfig(env);
+
+			expect(config.langfuseSecretKey).toBeUndefined();
+		});
+	});
+
+	describe('langfusePublicKey', () => {
+		it('returns LANGFUSE_PUBLIC_KEY from env', () => {
+			const env = createMockEnv({ LANGFUSE_PUBLIC_KEY: 'pk-lf-test' } as Partial<MockEnv>);
+			const config = new CloudflareConfig(env);
+
+			expect(config.langfusePublicKey).toBe('pk-lf-test');
+		});
+
+		it('returns undefined when LANGFUSE_PUBLIC_KEY is not set', () => {
+			const env = createMockEnv();
+			const config = new CloudflareConfig(env);
+
+			expect(config.langfusePublicKey).toBeUndefined();
+		});
+	});
+
+	describe('langfuseBaseUrl', () => {
+		it('returns LANGFUSE_BASEURL from env when set', () => {
+			const env = createMockEnv({ LANGFUSE_BASEURL: 'https://custom.langfuse.com' } as Partial<MockEnv>);
+			const config = new CloudflareConfig(env);
+
+			expect(config.langfuseBaseUrl).toBe('https://custom.langfuse.com');
+		});
+
+		it('returns default URL when LANGFUSE_BASEURL is not set', () => {
+			const env = createMockEnv();
+			const config = new CloudflareConfig(env);
+
+			expect(config.langfuseBaseUrl).toBe('https://cloud.langfuse.com');
 		});
 	});
 });

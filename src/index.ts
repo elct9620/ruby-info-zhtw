@@ -7,6 +7,7 @@ import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter
 import { RestIssueRepository } from '@/repository/RestIssueRepository';
 import { AiSummarizeService } from '@/service/AiSummarizeService';
 import { EmailDispatcher, EmailDispatchType } from '@/service/EmailDispatcher';
+import { LangfuseService } from '@/service/LangfuseService';
 import { SummarizeUsecase } from '@/usecase/SummarizeUsecase';
 import config from './config';
 
@@ -37,16 +38,22 @@ export default {
 				try {
 					const { issueId } = route.params;
 
-					// Create dependencies
+					const langfuseService =
+						config.langfusePublicKey && config.langfuseSecretKey
+							? new LangfuseService(
+									config.langfusePublicKey,
+									config.langfuseSecretKey,
+									config.langfuseBaseUrl
+								)
+							: undefined;
+
 					const repository = new RestIssueRepository();
-					const summarizeService = new AiSummarizeService(openai('gpt-5-mini'));
+					const summarizeService = new AiSummarizeService(openai('gpt-5-mini'), langfuseService);
 					const presenter = new DiscordSummarizePresenter();
 
-					// Create and execute the use case
 					const useCase = new SummarizeUsecase(repository, summarizeService, presenter);
 					await useCase.execute(issueId);
 
-					// Render the result to Discord
 					await presenter.render(config.discordWebhook);
 				} catch (error) {
 					console.error(`Error processing issue:`, error);

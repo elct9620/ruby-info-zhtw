@@ -10,6 +10,9 @@ export interface Config {
 	discordAllowGuildId: string;
 	discordAllowRoleId: string;
 	secretKeyBase: string;
+	langfuseSecretKey?: string;
+	langfusePublicKey?: string;
+	langfuseBaseUrl?: string;
 }
 
 export class CloudflareConfig {
@@ -49,6 +52,18 @@ export class CloudflareConfig {
 
 	get discordAllowRoleId(): string {
 		return this.env.DISCORD_ALLOW_ROLE_ID;
+	}
+
+	get langfuseSecretKey(): string | undefined {
+		return this.env.LANGFUSE_SECRET_KEY || undefined;
+	}
+
+	get langfusePublicKey(): string | undefined {
+		return this.env.LANGFUSE_PUBLIC_KEY || undefined;
+	}
+
+	get langfuseBaseUrl(): string {
+		return this.env.LANGFUSE_BASEURL || 'https://cloud.langfuse.com';
 	}
 }
 

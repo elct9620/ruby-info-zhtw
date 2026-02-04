@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AiSummarizeService } from '@/service/AiSummarizeService';
 import { Issue, IssueType } from '@/entity/Issue';
 import { Journal } from '@/entity/Journal';
+import { LangfuseService } from '@/service/LangfuseService';
 import { generateText, LanguageModel } from 'ai';
 
 vi.mock('ai', () => ({
@@ -222,6 +223,76 @@ describe('AiSummarizeService', () => {
 					model: mockModel,
 				})
 			);
+		});
+
+		it('calls langfuse service when provided', async () => {
+			vi.mocked(generateText).mockResolvedValue({
+				text: 'Summary',
+				response: { modelId: 'gpt-5-mini', id: 'resp-123', timestamp: new Date() },
+				usage: { inputTokens: 100, outputTokens: 50 },
+			} as Awaited<ReturnType<typeof generateText>>);
+
+			const mockLangfuse = {
+				traceGeneration: vi.fn().mockResolvedValue(undefined),
+			} as unknown as LangfuseService;
+
+			const issue = new Issue(12345);
+			issue.subject = 'Subject';
+			issue.description = 'Description';
+			issue.authorName = 'Author';
+
+			const service = new AiSummarizeService(mockModel, mockLangfuse);
+			await service.execute(issue);
+
+			expect(mockLangfuse.traceGeneration).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traceName: 'summarize-issue',
+					model: 'gpt-5-mini',
+					usage: { inputTokens: 100, outputTokens: 50 },
+					metadata: { issueId: 12345 },
+				})
+			);
+		});
+
+		it('does not throw when langfuse service fails', async () => {
+			vi.mocked(generateText).mockResolvedValue({
+				text: 'Summary',
+				response: { modelId: 'gpt-5-mini', id: 'resp-123', timestamp: new Date() },
+				usage: { inputTokens: 100, outputTokens: 50 },
+			} as Awaited<ReturnType<typeof generateText>>);
+
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const mockLangfuse = {
+				traceGeneration: vi.fn().mockRejectedValue(new Error('Langfuse error')),
+			} as unknown as LangfuseService;
+
+			const issue = new Issue(1);
+			issue.subject = 'Subject';
+			issue.description = 'Description';
+			issue.authorName = 'Author';
+
+			const service = new AiSummarizeService(mockModel, mockLangfuse);
+			const result = await service.execute(issue);
+
+			expect(result).toBe('Summary');
+			expect(consoleSpy).toHaveBeenCalled();
+			consoleSpy.mockRestore();
+		});
+
+		it('works without langfuse service', async () => {
+			vi.mocked(generateText).mockResolvedValue({
+				text: 'Summary',
+			} as Awaited<ReturnType<typeof generateText>>);
+
+			const issue = new Issue(1);
+			issue.subject = 'Subject';
+			issue.description = 'Description';
+			issue.authorName = 'Author';
+
+			const service = new AiSummarizeService(mockModel);
+			const result = await service.execute(issue);
+
+			expect(result).toBe('Summary');
 		});
 	});
 });

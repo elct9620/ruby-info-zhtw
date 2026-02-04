@@ -4,12 +4,15 @@ import Mustache from 'mustache';
 import { Issue } from '@/entity/Issue';
 import promptTemplate from '@/prompts/summarize.md';
 import { SummarizeService } from '@/usecase/interface';
+import { LangfuseService } from './LangfuseService';
 
 export class AiSummarizeService implements SummarizeService {
-	constructor(private readonly llmModel: LanguageModel) {}
+	constructor(
+		private readonly llmModel: LanguageModel,
+		private readonly langfuseService?: LangfuseService
+	) {}
 
 	async execute(issue: Issue): Promise<string> {
-		// Get the latest journal if available
 		const journals = issue.journals;
 		const latestJournal = journals.length > 0 ? journals[journals.length - 1] : null;
 
@@ -31,11 +34,35 @@ export class AiSummarizeService implements SummarizeService {
 			})),
 		});
 
-		const { text } = await generateText({
+		const startTime = new Date();
+		const { text, response, usage } = await generateText({
 			model: this.llmModel,
 			prompt,
 			temperature: 1,
 		});
+		const endTime = new Date();
+
+		if (this.langfuseService) {
+			try {
+				await this.langfuseService.traceGeneration({
+					traceId: crypto.randomUUID(),
+					traceName: 'summarize-issue',
+					generationId: crypto.randomUUID(),
+					model: response.modelId,
+					input: prompt,
+					output: text,
+					startTime,
+					endTime,
+					usage: {
+						inputTokens: usage.inputTokens,
+						outputTokens: usage.outputTokens,
+					},
+					metadata: { issueId: issue.id },
+				});
+			} catch (error) {
+				console.error('Failed to send trace to Langfuse:', error);
+			}
+		}
 
 		return text;
 	}
