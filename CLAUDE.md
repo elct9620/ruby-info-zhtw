@@ -4,64 +4,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Ruby Information Bot that processes Ruby mailing list emails and summarizes them in Traditional Chinese for the Ruby Taiwan community. It runs on Cloudflare Workers and integrates with Discord. The bot subscribes to Ruby Core mailing list and automatically processes incoming emails.
+Ruby Information Bot that processes Ruby Core mailing list emails and summarizes them in Traditional Chinese for the Ruby Taiwan community. Runs on Cloudflare Workers, integrates with Discord.
 
-## Common Development Commands
+## Development Commands
 
 ```bash
-npm run dev         # Start development server with Wrangler
-npm start           # Alias for npm run dev
-npm test            # Run tests with Vitest
-npm run deploy      # Deploy to Cloudflare Workers
-npm run cf-typegen  # Generate Cloudflare types from wrangler.jsonc
+npm run dev              # Start development server with Wrangler
+npm test                 # Run all tests with Vitest
+npm test -- path/to/file # Run single test file
+npm run test:coverage    # Run tests with coverage report
+npm run deploy           # Deploy to Cloudflare Workers
+npm run cf-typegen       # Generate Cloudflare types from wrangler.jsonc
 ```
 
-## Architecture Overview
+## Architecture
 
-This project follows Clean Architecture principles with clear separation of concerns:
+Clean Architecture with dependency injection. See [docs/architecture.md](docs/architecture.md) for details.
 
-- **`/src/controller/`** - HTTP route handlers (auth, simulate)
-- **`/src/entity/`** - Domain entities (Issue, Journal)
-- **`/src/repository/`** - Data access layer (RestIssueRepository)
-- **`/src/service/`** - Business services (AiSummarizeService, DiscordRoleAccessService, EmailDispatcher, SessionCipher)
-- **`/src/usecase/`** - Use cases implementing business logic (SummarizeUsecase)
-- **`/src/presenter/`** - Presentation layer for Discord (DiscordSummarizePresenter)
-- **`/src/config.ts`** - Configuration management using CloudflareConfig class
+```
+Controller → UseCase → Service/Repository → Entity
+                ↓
+            Presenter → External API (Discord)
+```
 
-### Email Processing Flow
+**Layers:**
+- `controller/` - HTTP routes and email handler adapter
+- `usecase/` - Business logic orchestration, interfaces in `interface.ts`
+- `service/` - AI summarization, email dispatch, session encryption, Langfuse tracing
+- `repository/` - Ruby Bug Tracker API client
+- `presenter/` - Discord Embed formatting
+- `entity/` - Domain models (Issue, Journal)
 
-1. Emails sent to `core@ruby.aotoki.cloud` trigger the `email` export handler
-2. EmailDispatcher routes emails based on rules (summarize, forward to admin, or reject)
-3. For summarization: SummarizeUsecase fetches issue data, generates AI summary, and sends to Discord
-
-### Key Dependencies
-
-- **Hono**: Web framework for HTTP routes
-- **AI SDK with OpenAI**: For generating summaries (uses GPT-5-mini)
-- **Postal MIME**: Email parsing
-- **Mustache**: Template rendering for summaries
+**Email Flow:** Email → EmailDispatcher → SummarizeUsecase → RestIssueRepository + AiSummarizeService → DiscordSummarizePresenter → Discord Webhook
 
 ## Configuration
 
-- **TypeScript**: Path alias `@/*` maps to `src/*`, ES2021 target, strict mode
-- **Cloudflare**: Configuration in `wrangler.jsonc`, email handler configured for core@ruby.aotoki.cloud
-- **Environment Variables**: Accessed via CloudflareConfig class from Cloudflare bindings
-  - ADMIN_EMAIL, DISCORD_WEBHOOK, DISCORD_CLIENT_ID/SECRET
-  - OPENAI_API_KEY, CF_AI_GATEWAY (optional)
-  - SECRET_KEY_BASE
-- **Prettier**: 140 char width, single quotes, tabs, with import organization
+- **TypeScript**: Path alias `@/*` → `src/*`
+- **Cloudflare**: `wrangler.jsonc`, email handler at `core@ruby.aotoki.cloud`
+- **Environment Variables**: See SPEC.md for full list
+  - Required: ADMIN_EMAIL, DISCORD_WEBHOOK, DISCORD_CLIENT_ID/SECRET, OPENAI_API_KEY, SECRET_KEY_BASE
+  - Optional: CF_AI_GATEWAY, LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL
 
 ## Testing
 
-Tests use Vitest with Cloudflare Workers pool. Test files should be in `/test` directory with `.spec.ts` extension.
+Vitest with Cloudflare Workers pool. Tests in `/test` with `.spec.ts` extension. Coverage target: 89%+.
 
 ## Coding Conventions
 
-From CONVENTIONS.md:
-- Never write comments unless exporting a method or class
-- Use JSDoc style comments for exported methods and classes
-
-## Git Conventions
-
-- Use conventional commits format in English
-- Follow Clean Architecture and Domain-Driven Design principles
+- Never write comments unless exporting a method or class (use JSDoc for exports)
+- Conventional commits in English
+- Clean Architecture and DDD principles
