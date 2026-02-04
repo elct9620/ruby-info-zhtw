@@ -50,38 +50,43 @@ export class RestIssueRepository implements IssueRepository {
 				return null;
 			}
 
-			const issueEntity = new Issue(issue.id);
-			issueEntity.subject = issue.subject;
-			issueEntity.description = issue.description;
-			issueEntity.link = `${RestIssueRepository.API_URL}/${issue.id}`;
-			issueEntity.type = this.mapTrackerToIssueType(issue.tracker?.name);
-			issueEntity.authorName = issue.author.name;
-
-			if (issue.assigned_to && issue.assigned_to.name) {
-				issueEntity.assignTo(issue.assigned_to.name);
-			}
-
-			if (issue.journals && Array.isArray(issue.journals)) {
-				for (const journalData of issue.journals) {
-					const journal = new Journal(journalData.id);
-					journal.userName = journalData.user.name;
-					journal.notes = journalData.notes || '';
-					issueEntity.addJournal(journal);
-				}
-			}
-
-			return issueEntity;
+			return this.mapIssueResponse(issue);
 		} catch (error) {
 			console.error('Error fetching issue:', error);
 			return null;
 		}
 	}
 
-	/**
-	 * Maps tracker name from the API to IssueType enum
-	 * @param trackerName The tracker name from the API
-	 * @returns The corresponding IssueType
-	 */
+	private mapIssueResponse(data: IssueSchema): Issue {
+		const issue = new Issue(data.id);
+		issue.subject = data.subject;
+		issue.description = data.description;
+		issue.link = `${RestIssueRepository.API_URL}/${data.id}`;
+		issue.type = this.mapTrackerToIssueType(data.tracker?.name);
+		issue.authorName = data.author.name;
+
+		if (data.assigned_to?.name) {
+			issue.assignTo(data.assigned_to.name);
+		}
+
+		this.mapJournals(data.journals).forEach((journal) => issue.addJournal(journal));
+
+		return issue;
+	}
+
+	private mapJournals(journals?: JournalSchema[]): Journal[] {
+		if (!journals || !Array.isArray(journals)) {
+			return [];
+		}
+
+		return journals.map((journalData) => {
+			const journal = new Journal(journalData.id);
+			journal.userName = journalData.user.name;
+			journal.notes = journalData.notes || '';
+			return journal;
+		});
+	}
+
 	private mapTrackerToIssueType(trackerName?: string): IssueType {
 		if (!trackerName) return IssueType.Unknown;
 

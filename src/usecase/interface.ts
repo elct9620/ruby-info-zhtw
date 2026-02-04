@@ -1,4 +1,4 @@
-import { Issue } from '@/entity/Issue';
+import { Issue, IssueType } from '@/entity/Issue';
 
 export interface IssueRepository {
 	findById(id: number): Promise<Issue | null>;
@@ -10,7 +10,7 @@ export interface SummarizeService {
 
 export interface SummarizePresenter {
 	setTitle(title: string): void;
-	setType(type: string): void;
+	setType(type: IssueType): void;
 	setLink(link: string): void;
 	setDescription(description: string): void;
 }

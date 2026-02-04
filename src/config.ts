@@ -7,6 +7,8 @@ export interface Config {
 	discordWebhook: string;
 	discordClientId: string;
 	discordClientSecret: string;
+	discordAllowGuildId: string;
+	discordAllowRoleId: string;
 	secretKeyBase: string;
 }
 
@@ -39,6 +41,14 @@ export class CloudflareConfig {
 
 	get secretKeyBase(): string {
 		return this.env.SECRET_KEY_BASE;
+	}
+
+	get discordAllowGuildId(): string {
+		return this.env.DISCORD_ALLOW_GUILD_ID;
+	}
+
+	get discordAllowRoleId(): string {
+		return this.env.DISCORD_ALLOW_ROLE_ID;
 	}
 }
 

@@ -27,8 +27,8 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 		this.description = description;
 	}
 
-	setType(type: string): void {
-		this.type = type as IssueType;
+	setType(type: IssueType): void {
+		this.type = type;
 	}
 
 	async render(webhookUrl: string): Promise<boolean> {

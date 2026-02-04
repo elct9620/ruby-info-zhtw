@@ -10,11 +10,15 @@ export class SessionCipher {
 		return new TextEncoder().encode(this.key);
 	}
 
+	private importKey(operations: ('encrypt' | 'decrypt')[]): Promise<CryptoKey> {
+		return crypto.subtle.importKey('raw', this.keyData, { name: 'AES-CBC' }, false, operations);
+	}
+
 	async encrypt(session: Session): Promise<string> {
 		const encoder = new TextEncoder();
 		const data = encoder.encode(JSON.stringify(session));
 		const iv = crypto.getRandomValues(new Uint8Array(16));
-		const key = await crypto.subtle.importKey('raw', this.keyData, { name: 'AES-CBC' }, false, ['encrypt']);
+		const key = await this.importKey(['encrypt']);
 		const cipherText = await crypto.subtle.encrypt(
 			{
 				name: 'AES-CBC',
@@ -42,7 +46,7 @@ export class SessionCipher {
 			const iv = data.slice(0, 16);
 			const cipherData = data.slice(16);
 
-			const key = await crypto.subtle.importKey('raw', this.keyData, { name: 'AES-CBC' }, false, ['decrypt']);
+			const key = await this.importKey(['decrypt']);
 			const decryptedData = await crypto.subtle.decrypt(
 				{
 					name: 'AES-CBC',
@@ -54,6 +58,7 @@ export class SessionCipher {
 
 			return JSON.parse(decoder.decode(decryptedData));
 		} catch (e) {
+			console.error('Failed to decrypt session:', e instanceof Error ? e.message : 'Unknown error');
 			return null;
 		}
 	}
