@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SessionCipher, Session } from '@/service/SessionCipher';
 
 describe('SessionCipher', () => {
@@ -48,14 +48,18 @@ describe('SessionCipher', () => {
 
 	describe('decrypt', () => {
 		it('returns null for invalid ciphertext', async () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const cipher = new SessionCipher(validKey);
 
 			const result = await cipher.decrypt('invalid-ciphertext');
 
 			expect(result).toBeNull();
+			expect(consoleSpy).toHaveBeenCalled();
+			consoleSpy.mockRestore();
 		});
 
 		it('returns null for tampered ciphertext', async () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const cipher = new SessionCipher(validKey);
 			const session: Session = {
 				displayName: 'Test User',
@@ -68,9 +72,12 @@ describe('SessionCipher', () => {
 			const result = await cipher.decrypt(tampered);
 
 			expect(result).toBeNull();
+			expect(consoleSpy).toHaveBeenCalled();
+			consoleSpy.mockRestore();
 		});
 
 		it('returns null when decrypting with different key', async () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const cipher1 = new SessionCipher(validKey);
 			const cipher2 = new SessionCipher('fedcba9876543210fedcba9876543210');
 			const session: Session = {
@@ -82,14 +89,19 @@ describe('SessionCipher', () => {
 			const result = await cipher2.decrypt(encrypted);
 
 			expect(result).toBeNull();
+			expect(consoleSpy).toHaveBeenCalled();
+			consoleSpy.mockRestore();
 		});
 
 		it('returns null for empty string', async () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const cipher = new SessionCipher(validKey);
 
 			const result = await cipher.decrypt('');
 
 			expect(result).toBeNull();
+			expect(consoleSpy).toHaveBeenCalled();
+			consoleSpy.mockRestore();
 		});
 	});
 
