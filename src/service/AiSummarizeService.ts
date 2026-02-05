@@ -38,7 +38,6 @@ export class AiSummarizeService implements SummarizeService {
 		const { text, response, usage } = await generateText({
 			model: this.llmModel,
 			prompt,
-			temperature: 1,
 		});
 		const endTime = new Date();
 

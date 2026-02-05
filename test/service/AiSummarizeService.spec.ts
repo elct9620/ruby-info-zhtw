@@ -36,7 +36,6 @@ describe('AiSummarizeService', () => {
 			expect(generateText).toHaveBeenCalledWith({
 				model: mockModel,
 				prompt: expect.stringContaining('Test Subject'),
-				temperature: 1,
 			});
 		});
 
@@ -183,26 +182,6 @@ describe('AiSummarizeService', () => {
 
 			expect(result).toBe('Summary without journals');
 			expect(generateText).toHaveBeenCalled();
-		});
-
-		it('uses temperature of 1 for generation', async () => {
-			vi.mocked(generateText).mockResolvedValue({
-				text: 'Summary',
-			} as Awaited<ReturnType<typeof generateText>>);
-
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
-
-			const service = new AiSummarizeService(mockModel);
-			await service.execute(issue);
-
-			expect(generateText).toHaveBeenCalledWith(
-				expect.objectContaining({
-					temperature: 1,
-				})
-			);
 		});
 
 		it('passes the model to generateText', async () => {
