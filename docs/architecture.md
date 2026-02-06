@@ -44,12 +44,14 @@ This project follows Clean Architecture principles with clear separation of conc
 │   └── Journal.ts              # Journal entity
 │
 ├── repository/                 # Data access layer
-│   └── RestIssueRepository.ts  # Ruby Bug Tracker API client
+│   ├── RestIssueRepository.ts  # Ruby Bug Tracker API client
+│   └── SpanTrackedIssueRepository.ts  # Decorator: adds Langfuse span tracing
 │
 ├── service/                    # Business services
 │   ├── AiSummarizeService.ts   # AI summary generation
 │   ├── DiscordRoleAccessService.ts  # Discord role verification
 │   ├── EmailDispatcher.ts      # Email routing logic
+│   ├── LangfuseService.ts      # Langfuse tracing (Trace, Span, Generation)
 │   └── SessionCipher.ts        # Session encryption
 │
 ├── usecase/                    # Business logic
@@ -72,16 +74,21 @@ Email Event
     │   ├─→ [ForwardAdmin] → Forward to admin email
     │   └─→ [Summarize]
     │        │
+    │        ├─→ LangfuseService.createTrace (email-summarize)
+    │        │
     │        └─→ SummarizeUsecase
-    │             ├─→ RestIssueRepository → bugs.ruby-lang.org API
-    │             │   └─→ Issue (domain model)
+    │             ├─→ SpanTrackedIssueRepository (fetch-issue span)
+    │             │   └─→ RestIssueRepository → bugs.ruby-lang.org API
+    │             │       └─→ Issue (domain model)
     │             │
-    │             ├─→ AiSummarizeService
+    │             ├─→ AiSummarizeService (llm-call generation)
     │             │   ├─→ OpenAI API (GPT-5-mini)
     │             │   └─→ Mustache template
     │             │
-    │             └─→ DiscordSummarizePresenter
-    │                  └─→ Discord Webhook API
+    │             ├─→ DiscordSummarizePresenter (discord-webhook span)
+    │             │   └─→ Discord Webhook API
+    │             │
+    │             └─→ LangfuseService.finalizeTrace
 
 HTTP Request
     │
@@ -107,6 +114,7 @@ Configuration
 | Builder | Discord message construction | DiscordSummarizePresenter setters |
 | Factory | Type conversion | `RestIssueRepository.mapTrackerToIssueType` |
 | Adapter | Data mapping | `RestIssueRepository.mapIssueResponse` |
+| Decorator | Cross-cutting concerns | `SpanTrackedIssueRepository` wraps `IssueRepository` with Langfuse span tracing |
 
 ## Interface Definitions
 

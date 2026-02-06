@@ -85,15 +85,29 @@ Routing decisions after email reception:
 
 #### Observability
 
-AI summarization uses Langfuse for tracing via OpenTelemetry integration:
+The entire email summarization flow is traced via Langfuse for end-to-end observability:
 
-| Telemetry Property | Value |
-|--------------------|-------|
-| `isEnabled` | `true` |
-| `functionId` | `summarize-issue` |
-| `metadata.issueId` | Issue ID being summarized |
+```
+email-summarize (Trace)
+├── fetch-issue (Span) — Bug Tracker API call
+├── llm-call (Generation) — AI summary generation
+└── discord-webhook (Span) — Discord Webhook delivery
+```
 
-Traces are exported to Langfuse for monitoring AI model usage, latency, and costs.
+| Trace Property | Value |
+|----------------|-------|
+| Trace name | `email-summarize` |
+| Trace tags | `['summarize']` |
+| Trace input | `{ issueId }` |
+| Trace output | `{ success: true }` or `{ success: false, error }` |
+
+| Child Event | Type | Description |
+|-------------|------|-------------|
+| `fetch-issue` | Span | Tracks Bug Tracker API latency; records `issueId` as input and whether the issue was found |
+| `llm-call` | Generation | Tracks AI model call with prompt, response, token usage, and model ID |
+| `discord-webhook` | Span | Tracks Discord Webhook delivery; records success status |
+
+Traces are exported to Langfuse for monitoring request flow, AI model usage, latency, and costs. When Langfuse credentials are not configured, tracing is silently skipped.
 
 #### Issue Type Presentation
 
@@ -181,7 +195,7 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Discord API | `https://discord.com/api/v10/users/@me/guilds/{guildId}/member` | Verify user roles |
 | Discord Webhook | Configured Webhook URL | Send summary messages |
 | OpenAI API | Via AI SDK | Generate Chinese summaries |
-| Langfuse | Via OpenTelemetry | Trace AI requests for observability |
+| Langfuse | Via Batch Ingestion API | Trace email processing flow for observability |
 
 ---
 
