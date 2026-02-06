@@ -41,6 +41,18 @@ export interface TraceGenerationParams {
 	metadata?: Record<string, unknown>;
 }
 
+export interface CreateGenerationParams {
+	generationId: string;
+	traceId: string;
+	model: string;
+	input: string;
+	output: string;
+	startTime: Date;
+	endTime: Date;
+	usage?: GenerationUsage;
+	metadata?: Record<string, unknown>;
+}
+
 export class LangfuseService {
 	private readonly baseUrl: string;
 	private readonly authHeader: string;
@@ -87,6 +99,38 @@ export class LangfuseService {
 								output: params.usage.outputTokens,
 							}
 						: undefined,
+				},
+			},
+		];
+
+		await this.ingest(batch);
+	}
+
+	/**
+	 * Creates a generation event under an existing Trace in Langfuse.
+	 */
+	async createGeneration(params: CreateGenerationParams): Promise<void> {
+		const batch = [
+			{
+				id: crypto.randomUUID(),
+				timestamp: new Date().toISOString(),
+				type: 'generation-create',
+				body: {
+					id: params.generationId,
+					traceId: params.traceId,
+					name: 'llm-call',
+					model: params.model,
+					input: params.input,
+					output: params.output,
+					startTime: params.startTime.toISOString(),
+					endTime: params.endTime.toISOString(),
+					usage: params.usage
+						? {
+								input: params.usage.inputTokens,
+								output: params.usage.outputTokens,
+							}
+						: undefined,
+					metadata: params.metadata,
 				},
 			},
 		];

@@ -34,31 +34,67 @@ export default {
 
 		// Handle the route
 		switch (route.type) {
-			case EmailDispatchType.Summarize:
+			case EmailDispatchType.Summarize: {
+				const { issueId } = route.params;
+
+				const langfuseService =
+					config.langfusePublicKey && config.langfuseSecretKey
+						? new LangfuseService(
+								config.langfusePublicKey,
+								config.langfuseSecretKey,
+								config.langfuseBaseUrl
+							)
+						: undefined;
+
+				const traceId = crypto.randomUUID();
 				try {
-					const { issueId } = route.params;
+					await langfuseService?.createTrace({
+						id: traceId,
+						name: 'email-summarize',
+						input: { issueId },
+						tags: ['summarize'],
+					});
+				} catch (error) {
+					console.error('Failed to create Langfuse trace:', error);
+				}
 
-					const langfuseService =
-						config.langfusePublicKey && config.langfuseSecretKey
-							? new LangfuseService(
-									config.langfusePublicKey,
-									config.langfuseSecretKey,
-									config.langfuseBaseUrl
-								)
-							: undefined;
-
+				try {
 					const repository = new RestIssueRepository();
 					const summarizeService = new AiSummarizeService(openai('gpt-5-mini'), langfuseService);
+					if (langfuseService) {
+						summarizeService.setTraceId(traceId);
+					}
 					const presenter = new DiscordSummarizePresenter();
 
 					const useCase = new SummarizeUsecase(repository, summarizeService, presenter);
 					await useCase.execute(issueId);
 
 					await presenter.render(config.discordWebhook);
+
+					try {
+						await langfuseService?.finalizeTrace({
+							traceId,
+							output: { success: true },
+						});
+					} catch (error) {
+						console.error('Failed to finalize Langfuse trace:', error);
+					}
 				} catch (error) {
 					console.error(`Error processing issue:`, error);
+					try {
+						await langfuseService?.finalizeTrace({
+							traceId,
+							output: {
+								success: false,
+								error: error instanceof Error ? error.message : String(error),
+							},
+						});
+					} catch (traceError) {
+						console.error('Failed to finalize Langfuse trace:', traceError);
+					}
 				}
 				break;
+			}
 
 			case EmailDispatchType.ForwardAdmin:
 				console.log(`Forwarding email to admin: ${route.text}`);

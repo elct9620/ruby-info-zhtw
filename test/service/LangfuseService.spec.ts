@@ -248,6 +248,132 @@ describe('LangfuseService', () => {
 		});
 	});
 
+	describe('createGeneration', () => {
+		it('sends only generation-create event without trace-create', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createGeneration({
+				generationId: 'gen-1',
+				traceId: 'existing-trace',
+				model: 'gpt-5-mini',
+				input: 'prompt text',
+				output: 'response text',
+				startTime: new Date('2024-01-01T00:00:00Z'),
+				endTime: new Date('2024-01-01T00:00:01Z'),
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch).toHaveLength(1);
+			expect(body.batch[0].type).toBe('generation-create');
+			expect(body.batch[0].body.id).toBe('gen-1');
+			expect(body.batch[0].body.traceId).toBe('existing-trace');
+			expect(body.batch[0].body.name).toBe('llm-call');
+			expect(body.batch[0].body.model).toBe('gpt-5-mini');
+			expect(body.batch[0].body.input).toBe('prompt text');
+			expect(body.batch[0].body.output).toBe('response text');
+		});
+
+		it('includes timestamps in ISO format', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createGeneration({
+				generationId: 'gen-1',
+				traceId: 'trace-1',
+				model: 'gpt-5-mini',
+				input: 'input',
+				output: 'output',
+				startTime: new Date('2024-01-01T10:00:00Z'),
+				endTime: new Date('2024-01-01T10:00:05Z'),
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].body.startTime).toBe('2024-01-01T10:00:00.000Z');
+			expect(body.batch[0].body.endTime).toBe('2024-01-01T10:00:05.000Z');
+		});
+
+		it('includes usage information when provided', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createGeneration({
+				generationId: 'gen-1',
+				traceId: 'trace-1',
+				model: 'gpt-5-mini',
+				input: 'input',
+				output: 'output',
+				startTime: new Date(),
+				endTime: new Date(),
+				usage: { inputTokens: 200, outputTokens: 100 },
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].body.usage).toEqual({ input: 200, output: 100 });
+		});
+
+		it('handles usage being undefined', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createGeneration({
+				generationId: 'gen-1',
+				traceId: 'trace-1',
+				model: 'gpt-5-mini',
+				input: 'input',
+				output: 'output',
+				startTime: new Date(),
+				endTime: new Date(),
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].body.usage).toBeUndefined();
+		});
+
+		it('includes metadata when provided', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createGeneration({
+				generationId: 'gen-1',
+				traceId: 'trace-1',
+				model: 'gpt-5-mini',
+				input: 'input',
+				output: 'output',
+				startTime: new Date(),
+				endTime: new Date(),
+				metadata: { issueId: 42 },
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].body.metadata).toEqual({ issueId: 42 });
+		});
+
+		it('logs error when API call fails', async () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error' });
+
+			const service = new LangfuseService('public-key', 'secret-key');
+			await service.createGeneration({
+				generationId: 'gen-1',
+				traceId: 'trace-1',
+				model: 'gpt-5-mini',
+				input: 'input',
+				output: 'output',
+				startTime: new Date(),
+				endTime: new Date(),
+			});
+
+			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 500 Internal Server Error');
+			consoleSpy.mockRestore();
+		});
+	});
+
 	describe('createTrace', () => {
 		it('sends trace-create event with correct body', async () => {
 			const service = new LangfuseService('public-key', 'secret-key');

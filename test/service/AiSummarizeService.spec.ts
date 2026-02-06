@@ -204,60 +204,6 @@ describe('AiSummarizeService', () => {
 			);
 		});
 
-		it('calls langfuse service when provided', async () => {
-			vi.mocked(generateText).mockResolvedValue({
-				text: 'Summary',
-				response: { modelId: 'gpt-5-mini', id: 'resp-123', timestamp: new Date() },
-				usage: { inputTokens: 100, outputTokens: 50 },
-			} as Awaited<ReturnType<typeof generateText>>);
-
-			const mockLangfuse = {
-				traceGeneration: vi.fn().mockResolvedValue(undefined),
-			} as unknown as LangfuseService;
-
-			const issue = new Issue(12345);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
-
-			const service = new AiSummarizeService(mockModel, mockLangfuse);
-			await service.execute(issue);
-
-			expect(mockLangfuse.traceGeneration).toHaveBeenCalledWith(
-				expect.objectContaining({
-					traceName: 'summarize-issue',
-					model: 'gpt-5-mini',
-					usage: { inputTokens: 100, outputTokens: 50 },
-					metadata: { issueId: 12345 },
-				})
-			);
-		});
-
-		it('does not throw when langfuse service fails', async () => {
-			vi.mocked(generateText).mockResolvedValue({
-				text: 'Summary',
-				response: { modelId: 'gpt-5-mini', id: 'resp-123', timestamp: new Date() },
-				usage: { inputTokens: 100, outputTokens: 50 },
-			} as Awaited<ReturnType<typeof generateText>>);
-
-			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const mockLangfuse = {
-				traceGeneration: vi.fn().mockRejectedValue(new Error('Langfuse error')),
-			} as unknown as LangfuseService;
-
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
-
-			const service = new AiSummarizeService(mockModel, mockLangfuse);
-			const result = await service.execute(issue);
-
-			expect(result).toBe('Summary');
-			expect(consoleSpy).toHaveBeenCalled();
-			consoleSpy.mockRestore();
-		});
-
 		it('works without langfuse service', async () => {
 			vi.mocked(generateText).mockResolvedValue({
 				text: 'Summary',
@@ -272,6 +218,113 @@ describe('AiSummarizeService', () => {
 			const result = await service.execute(issue);
 
 			expect(result).toBe('Summary');
+		});
+	});
+
+	describe('langfuse integration', () => {
+		let mockFetch: ReturnType<typeof vi.fn>;
+		let langfuseService: LangfuseService;
+
+		beforeEach(() => {
+			mockFetch = vi.fn().mockResolvedValue({ ok: true });
+			vi.stubGlobal('fetch', mockFetch);
+			vi.stubGlobal('crypto', {
+				randomUUID: () => 'test-uuid',
+			});
+			langfuseService = new LangfuseService('pub-key', 'sec-key');
+		});
+
+		it('sends trace-create and generation-create when no external traceId', async () => {
+			vi.mocked(generateText).mockResolvedValue({
+				text: 'Summary',
+				response: { modelId: 'gpt-5-mini', id: 'resp-123', timestamp: new Date() },
+				usage: { inputTokens: 100, outputTokens: 50 },
+			} as Awaited<ReturnType<typeof generateText>>);
+
+			const issue = new Issue(12345);
+			issue.subject = 'Subject';
+			issue.description = 'Description';
+			issue.authorName = 'Author';
+
+			const service = new AiSummarizeService(mockModel, langfuseService);
+			await service.execute(issue);
+
+			expect(mockFetch).toHaveBeenCalledOnce();
+			const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+			expect(body.batch).toHaveLength(2);
+			expect(body.batch[0].type).toBe('trace-create');
+			expect(body.batch[0].body.name).toBe('summarize-issue');
+			expect(body.batch[1].type).toBe('generation-create');
+			expect(body.batch[1].body.model).toBe('gpt-5-mini');
+			expect(body.batch[1].body.usage).toEqual({ input: 100, output: 50 });
+		});
+
+		it('sends only generation-create when external traceId is set', async () => {
+			vi.mocked(generateText).mockResolvedValue({
+				text: 'Summary',
+				response: { modelId: 'gpt-5-mini', id: 'resp-123', timestamp: new Date() },
+				usage: { inputTokens: 100, outputTokens: 50 },
+			} as Awaited<ReturnType<typeof generateText>>);
+
+			const issue = new Issue(12345);
+			issue.subject = 'Subject';
+			issue.description = 'Description';
+			issue.authorName = 'Author';
+
+			const service = new AiSummarizeService(mockModel, langfuseService);
+			service.setTraceId('external-trace-id');
+			await service.execute(issue);
+
+			expect(mockFetch).toHaveBeenCalledOnce();
+			const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+			expect(body.batch).toHaveLength(1);
+			expect(body.batch[0].type).toBe('generation-create');
+			expect(body.batch[0].body.traceId).toBe('external-trace-id');
+			expect(body.batch[0].body.metadata).toEqual({ issueId: 12345 });
+		});
+
+		it('does not throw when langfuse ingestion fails', async () => {
+			mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Error' });
+			vi.mocked(generateText).mockResolvedValue({
+				text: 'Summary',
+				response: { modelId: 'gpt-5-mini', id: 'resp-123', timestamp: new Date() },
+				usage: { inputTokens: 100, outputTokens: 50 },
+			} as Awaited<ReturnType<typeof generateText>>);
+
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const issue = new Issue(1);
+			issue.subject = 'Subject';
+			issue.description = 'Description';
+			issue.authorName = 'Author';
+
+			const service = new AiSummarizeService(mockModel, langfuseService);
+			const result = await service.execute(issue);
+
+			expect(result).toBe('Summary');
+			consoleSpy.mockRestore();
+		});
+
+		it('does not throw when fetch throws with external traceId', async () => {
+			mockFetch.mockRejectedValueOnce(new Error('Network error'));
+			vi.mocked(generateText).mockResolvedValue({
+				text: 'Summary',
+				response: { modelId: 'gpt-5-mini', id: 'resp-123', timestamp: new Date() },
+				usage: { inputTokens: 100, outputTokens: 50 },
+			} as Awaited<ReturnType<typeof generateText>>);
+
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const issue = new Issue(1);
+			issue.subject = 'Subject';
+			issue.description = 'Description';
+			issue.authorName = 'Author';
+
+			const service = new AiSummarizeService(mockModel, langfuseService);
+			service.setTraceId('external-trace');
+			const result = await service.execute(issue);
+
+			expect(result).toBe('Summary');
+			expect(consoleSpy).toHaveBeenCalled();
+			consoleSpy.mockRestore();
 		});
 	});
 });

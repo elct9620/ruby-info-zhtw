@@ -7,10 +7,19 @@ import { SummarizeService } from '@/usecase/interface';
 import { LangfuseService } from './LangfuseService';
 
 export class AiSummarizeService implements SummarizeService {
+	private externalTraceId?: string;
+
 	constructor(
 		private readonly llmModel: LanguageModel,
 		private readonly langfuseService?: LangfuseService
 	) {}
+
+	/**
+	 * Sets an external trace ID to associate this service's generation with an existing Langfuse trace.
+	 */
+	setTraceId(traceId: string): void {
+		this.externalTraceId = traceId;
+	}
 
 	async execute(issue: Issue): Promise<string> {
 		const journals = issue.journals;
@@ -43,10 +52,10 @@ export class AiSummarizeService implements SummarizeService {
 
 		if (this.langfuseService) {
 			try {
-				await this.langfuseService.traceGeneration({
-					traceId: crypto.randomUUID(),
-					traceName: 'summarize-issue',
+				const traceId = this.externalTraceId ?? crypto.randomUUID();
+				const generationParams = {
 					generationId: crypto.randomUUID(),
+					traceId,
 					model: response.modelId,
 					input: prompt,
 					output: text,
@@ -57,7 +66,16 @@ export class AiSummarizeService implements SummarizeService {
 						outputTokens: usage.outputTokens,
 					},
 					metadata: { issueId: issue.id },
-				});
+				};
+
+				if (this.externalTraceId) {
+					await this.langfuseService.createGeneration(generationParams);
+				} else {
+					await this.langfuseService.traceGeneration({
+						...generationParams,
+						traceName: 'summarize-issue',
+					});
+				}
 			} catch (error) {
 				console.error('Failed to send trace to Langfuse:', error);
 			}
