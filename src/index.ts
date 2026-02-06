@@ -5,6 +5,7 @@ import AuthRoute from '@/controller/AuthController';
 import SimulateRoute from '@/controller/SimulateController';
 import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
 import { RestIssueRepository } from '@/repository/RestIssueRepository';
+import { SpanTrackedIssueRepository } from '@/repository/SpanTrackedIssueRepository';
 import { AiSummarizeService } from '@/service/AiSummarizeService';
 import { EmailDispatcher, EmailDispatchType } from '@/service/EmailDispatcher';
 import { LangfuseService } from '@/service/LangfuseService';
@@ -66,10 +67,29 @@ export default {
 					}
 					const presenter = new DiscordSummarizePresenter();
 
-					const useCase = new SummarizeUsecase(repository, summarizeService, presenter);
+					const trackedRepository = langfuseService
+						? new SpanTrackedIssueRepository(repository, langfuseService, traceId)
+						: repository;
+
+					const useCase = new SummarizeUsecase(trackedRepository, summarizeService, presenter);
 					await useCase.execute(issueId);
 
-					await presenter.render(config.discordWebhook);
+					const renderStart = new Date();
+					const renderSuccess = await presenter.render(config.discordWebhook);
+					const renderEnd = new Date();
+					try {
+						await langfuseService?.createSpan({
+							id: crypto.randomUUID(),
+							traceId,
+							name: 'discord-webhook',
+							startTime: renderStart,
+							endTime: renderEnd,
+							input: { webhookUrl: '[redacted]' },
+							output: { success: renderSuccess },
+						});
+					} catch (error) {
+						console.error('Failed to create discord-webhook span:', error);
+					}
 
 					try {
 						await langfuseService?.finalizeTrace({
