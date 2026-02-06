@@ -247,4 +247,236 @@ describe('LangfuseService', () => {
 			expect(body.batch[1].body.usage).toBeUndefined();
 		});
 	});
+
+	describe('createTrace', () => {
+		it('sends trace-create event with correct body', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createTrace({
+				id: 'trace-abc',
+				name: 'email-processing',
+				input: { emailId: '123' },
+				metadata: { source: 'ruby-core' },
+				tags: ['email', 'ruby'],
+			});
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				'https://cloud.langfuse.com/api/public/ingestion',
+				expect.any(Object)
+			);
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch).toHaveLength(1);
+			expect(body.batch[0].type).toBe('trace-create');
+			expect(body.batch[0].body.id).toBe('trace-abc');
+			expect(body.batch[0].body.name).toBe('email-processing');
+			expect(body.batch[0].body.input).toEqual({ emailId: '123' });
+			expect(body.batch[0].body.metadata).toEqual({ source: 'ruby-core' });
+			expect(body.batch[0].body.tags).toEqual(['email', 'ruby']);
+		});
+
+		it('sends correct headers and method', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createTrace({ id: 'trace-1', name: 'test' });
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			expect(callArgs.method).toBe('POST');
+			expect(callArgs.headers['Content-Type']).toBe('application/json');
+			expect(callArgs.headers.Authorization).toBe('Basic ' + btoa('public-key:secret-key'));
+		});
+
+		it('handles optional params being undefined', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createTrace({ id: 'trace-1', name: 'test' });
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].body.input).toBeUndefined();
+			expect(body.batch[0].body.metadata).toBeUndefined();
+			expect(body.batch[0].body.tags).toBeUndefined();
+		});
+
+		it('includes batch event id and timestamp', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createTrace({ id: 'trace-1', name: 'test' });
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].id).toBe('test-uuid');
+			expect(body.batch[0].timestamp).toBeDefined();
+		});
+
+		it('logs error when API call fails', async () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockFetch.mockResolvedValueOnce({ ok: false, status: 400, statusText: 'Bad Request' });
+
+			const service = new LangfuseService('public-key', 'secret-key');
+			await service.createTrace({ id: 'trace-1', name: 'test' });
+
+			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 400 Bad Request');
+			consoleSpy.mockRestore();
+		});
+	});
+
+	describe('createSpan', () => {
+		it('sends span-create event with correct body', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+			const startTime = new Date('2024-01-01T10:00:00Z');
+			const endTime = new Date('2024-01-01T10:00:05Z');
+
+			await service.createSpan({
+				id: 'span-1',
+				traceId: 'trace-abc',
+				name: 'fetch-issue',
+				startTime,
+				endTime,
+				input: { issueId: 42 },
+				output: { title: 'Bug report' },
+				metadata: { step: 'repository' },
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch).toHaveLength(1);
+			expect(body.batch[0].type).toBe('span-create');
+			expect(body.batch[0].body.id).toBe('span-1');
+			expect(body.batch[0].body.traceId).toBe('trace-abc');
+			expect(body.batch[0].body.name).toBe('fetch-issue');
+			expect(body.batch[0].body.startTime).toBe('2024-01-01T10:00:00.000Z');
+			expect(body.batch[0].body.endTime).toBe('2024-01-01T10:00:05.000Z');
+			expect(body.batch[0].body.input).toEqual({ issueId: 42 });
+			expect(body.batch[0].body.output).toEqual({ title: 'Bug report' });
+			expect(body.batch[0].body.metadata).toEqual({ step: 'repository' });
+		});
+
+		it('sends correct headers and method', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createSpan({
+				id: 'span-1',
+				traceId: 'trace-1',
+				name: 'test',
+				startTime: new Date(),
+				endTime: new Date(),
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			expect(callArgs.method).toBe('POST');
+			expect(callArgs.headers['Content-Type']).toBe('application/json');
+			expect(callArgs.headers.Authorization).toBe('Basic ' + btoa('public-key:secret-key'));
+		});
+
+		it('handles optional params being undefined', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.createSpan({
+				id: 'span-1',
+				traceId: 'trace-1',
+				name: 'test',
+				startTime: new Date(),
+				endTime: new Date(),
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].body.input).toBeUndefined();
+			expect(body.batch[0].body.output).toBeUndefined();
+			expect(body.batch[0].body.metadata).toBeUndefined();
+		});
+
+		it('logs error when API call fails', async () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error' });
+
+			const service = new LangfuseService('public-key', 'secret-key');
+			await service.createSpan({
+				id: 'span-1',
+				traceId: 'trace-1',
+				name: 'test',
+				startTime: new Date(),
+				endTime: new Date(),
+			});
+
+			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 500 Internal Server Error');
+			consoleSpy.mockRestore();
+		});
+	});
+
+	describe('finalizeTrace', () => {
+		it('sends trace-create event for upsert with correct body', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.finalizeTrace({
+				traceId: 'trace-abc',
+				output: { summary: 'Issue resolved' },
+				metadata: { status: 'completed' },
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch).toHaveLength(1);
+			expect(body.batch[0].type).toBe('trace-create');
+			expect(body.batch[0].body.id).toBe('trace-abc');
+			expect(body.batch[0].body.output).toEqual({ summary: 'Issue resolved' });
+			expect(body.batch[0].body.metadata).toEqual({ status: 'completed' });
+		});
+
+		it('sends correct headers and method', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.finalizeTrace({ traceId: 'trace-1' });
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			expect(callArgs.method).toBe('POST');
+			expect(callArgs.headers['Content-Type']).toBe('application/json');
+			expect(callArgs.headers.Authorization).toBe('Basic ' + btoa('public-key:secret-key'));
+		});
+
+		it('handles optional params being undefined', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.finalizeTrace({ traceId: 'trace-1' });
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].body.output).toBeUndefined();
+			expect(body.batch[0].body.metadata).toBeUndefined();
+		});
+
+		it('does not include name in upsert body', async () => {
+			const service = new LangfuseService('public-key', 'secret-key');
+
+			await service.finalizeTrace({
+				traceId: 'trace-1',
+				output: 'result',
+			});
+
+			const callArgs = mockFetch.mock.calls[0][1];
+			const body = JSON.parse(callArgs.body);
+
+			expect(body.batch[0].body.name).toBeUndefined();
+		});
+
+		it('logs error when API call fails', async () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockFetch.mockResolvedValueOnce({ ok: false, status: 403, statusText: 'Forbidden' });
+
+			const service = new LangfuseService('public-key', 'secret-key');
+			await service.finalizeTrace({ traceId: 'trace-1' });
+
+			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 403 Forbidden');
+			consoleSpy.mockRestore();
+		});
+	});
 });
