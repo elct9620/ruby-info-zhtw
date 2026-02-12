@@ -21,10 +21,7 @@ export default {
 
 		switch (route.type) {
 			case EmailDispatchType.Summarize: {
-				const { issueId } = route.params;
-				const id = env.ISSUE_DEBOUNCE.idFromName(`issue-${issueId}`);
-				const stub = env.ISSUE_DEBOUNCE.get(id);
-				await stub.handleEmail(issueId);
+				console.log(`Skipping summarize for issue ${route.params.issueId}: migrating DO storage backend`);
 				break;
 			}
 
