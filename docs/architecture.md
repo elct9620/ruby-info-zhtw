@@ -39,6 +39,9 @@ This project follows Clean Architecture principles with clear separation of conc
 │   ├── AuthController.ts       # Discord OAuth flow
 │   └── SimulateController.ts   # Protected simulation route
 │
+├── durable/                    # Composition Root (Cloudflare Durable Objects)
+│   └── IssueDebounceObject.ts  # Debounce emails + wire dependencies
+│
 ├── entity/                     # Domain models
 │   ├── Issue.ts                # Issue entity
 │   └── Journal.ts              # Journal entity
@@ -59,7 +62,8 @@ This project follows Clean Architecture principles with clear separation of conc
 │   └── SummarizeUsecase.ts     # Issue summarization orchestration
 │
 ├── presenter/                  # Output formatting
-│   └── DiscordSummarizePresenter.ts  # Discord Embed formatting
+│   ├── DiscordSummarizePresenter.ts   # Discord Embed formatting + delivery
+│   └── SpanTrackedSummarizePresenter.ts  # Decorator: adds Langfuse span tracing
 │
 └── prompts/                    # AI prompt templates
     └── summarize.md            # Mustache template for summaries
@@ -74,21 +78,24 @@ Email Event
     │   ├─→ [ForwardAdmin] → Forward to admin email
     │   └─→ [Summarize]
     │        │
-    │        ├─→ LangfuseService.createTrace (email-summarize)
-    │        │
-    │        └─→ SummarizeUsecase
-    │             ├─→ SpanTrackedIssueRepository (fetch-issue span)
-    │             │   └─→ RestIssueRepository → bugs.ruby-lang.org API
-    │             │       └─→ Issue (domain model)
+    │        └─→ IssueDebounceObject (Composition Root)
+    │             ├─→ Debounce rapid emails via Durable Object alarm
+    │             ├─→ LangfuseService.createTrace (email-summarize)
+    │             ├─→ Wire decorators (SpanTracked*) when Langfuse enabled
     │             │
-    │             ├─→ AiSummarizeService (llm-call generation)
-    │             │   ├─→ OpenAI API (GPT-5-mini)
-    │             │   └─→ Mustache template
-    │             │
-    │             ├─→ DiscordSummarizePresenter (discord-webhook span)
-    │             │   └─→ Discord Webhook API
-    │             │
-    │             └─→ LangfuseService.finalizeTrace
+    │             └─→ SummarizeUsecase
+    │                  ├─→ SpanTrackedIssueRepository (fetch-issue span)
+    │                  │   └─→ RestIssueRepository → bugs.ruby-lang.org API
+    │                  │       └─→ Issue (domain model)
+    │                  │
+    │                  ├─→ AiSummarizeService (llm-call generation)
+    │                  │   ├─→ OpenAI API (GPT-5-mini)
+    │                  │   └─→ Mustache template
+    │                  │
+    │                  ├─→ SpanTrackedSummarizePresenter (discord-webhook span)
+    │                  │   └─→ DiscordSummarizePresenter → Discord Webhook API
+    │                  │
+    │                  └─→ LangfuseService.finalizeTrace
 
 HTTP Request
     │
@@ -114,7 +121,9 @@ Configuration
 | Builder | Discord message construction | DiscordSummarizePresenter setters |
 | Factory | Type conversion | `RestIssueRepository.mapTrackerToIssueType` |
 | Adapter | Data mapping | `RestIssueRepository.mapIssueResponse` |
-| Decorator | Cross-cutting concerns | `SpanTrackedIssueRepository` wraps `IssueRepository` with Langfuse span tracing |
+| Decorator | Cross-cutting concerns | `SpanTrackedIssueRepository` and `SpanTrackedSummarizePresenter` wrap ports with Langfuse span tracing |
+| Composition Root | Dependency wiring | `IssueDebounceObject.summarize()` assembles all dependencies and decorators |
+| Debounce | Email coalescing | `IssueDebounceObject` merges rapid emails via Durable Object alarm |
 
 ## Interface Definitions
 
@@ -134,6 +143,7 @@ interface SummarizePresenter {
   setDescription(description: string): void;
   setLink(link: string): void;
   setType(type: IssueType): void;
+  render(): Promise<void>;
 }
 ```
 
@@ -148,12 +158,13 @@ Tests use Vitest with Cloudflare Workers pool.
 
 ```
 /test/
+├── durable/                    # Composition Root tests (Durable Object)
 ├── entity/                     # Domain model tests
 ├── repository/                 # API client tests (mocked fetch)
 ├── service/                    # Service tests
-├── presenter/                  # Presenter tests
+├── presenter/                  # Presenter tests (including decorators)
 ├── usecase/                    # Integration tests
 └── config.spec.ts              # Configuration tests
 ```
 
-**Coverage target**: 89%+
+**Coverage target**: 90%+
