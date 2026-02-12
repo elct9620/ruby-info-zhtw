@@ -14,12 +14,14 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 - Community members can understand Ruby's latest developments without reading English mailing lists
 - Important Ruby Issue discussions are presented in real-time on Discord channels
 - Unauthorized emails are automatically forwarded to administrators for handling
+- Rapid-fire discussions on the same Issue are consolidated into a single summary, reducing notification noise and improving summary quality
 
 ## Success Criteria
 
 - Emails from authorized sources containing Ruby Bug Tracker links successfully generate Chinese summaries
 - Summary content follows the fixed four-section structure: 📌 Core Focus, 💬 Latest Discussion, 🔍 Technical Details (optional), 📊 Current Status
 - Discord Embed messages include correct colors, emojis, and links
+- Multiple emails for the same Issue within the debounce window produce only one Discord notification
 
 ## Non-goals
 
@@ -41,7 +43,8 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 | Fetch Issue information from Bug Tracker | Manage OpenAI API quota |
 | Generate Traditional Chinese summaries | Handle Discord message interactions |
 | Send summaries to Discord Webhook | Store or search historical data |
-| Forward unprocessable emails to admin | |
+| Forward unprocessable emails to admin | Persist debounce state beyond processing |
+| Debounce rapid emails for the same Issue | |
 
 ### Interaction
 
@@ -59,6 +62,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 | Summary generation prompt | Discord Webhook API |
 | Discord Embed format and colors | Ruby Bug Tracker REST API |
 | Session encryption mechanism | OpenAI API |
+| Debounce delay duration | Cloudflare Durable Objects |
 | | Langfuse (optional, for observability) |
 
 ---
@@ -92,11 +96,39 @@ Routing decisions after email reception:
 - `ml.ruby-lang.org`
 - Domain matching uses suffix comparison (endsWith), subdomains are accepted
 
+### Debounce
+
+When EmailDispatcher routes an email as `Summarize`, the system defers processing through a Durable Object identified by `issue-{id}` (where `{id}` is the extracted Bug Tracker Issue ID).
+
+**Timer behavior:**
+
+| Event | Action |
+|-------|--------|
+| First email for an Issue arrives | Create Durable Object, store Issue context, set alarm for debounce delay |
+| Subsequent email for same Issue arrives within delay | Reset alarm to full debounce delay from current time |
+| Alarm fires (no new email within delay) | Execute Summarize flow, then clear all stored state |
+| New email arrives while Summarize flow is in progress | Start a new debounce cycle (set alarm for full delay) |
+
+**Scope:**
+- Only `Summarize` route is debounced; `ForwardAdmin` remains immediate
+- Default debounce delay: 5 minutes, configurable via `DEBOUNCE_DELAY` environment variable
+- After successful summarization, the Durable Object clears its storage (no state persists beyond processing)
+
+**Observability:**
+
+Debounce events are logged via `console.log` for diagnostics (not traced in Langfuse, as debounce occurs before the Summarize flow):
+
+| Event | Log Content |
+|-------|-------------|
+| Email received, entering debounce | Issue ID, Durable Object ID |
+| Timer reset by subsequent email | Issue ID, previous remaining delay |
+| Alarm fires, starting Summarize flow | Issue ID, total emails received during debounce window |
+
 ### Summarization
 
 #### Observability
 
-The entire email summarization flow is traced via Langfuse for end-to-end observability:
+The entire email summarization flow is traced via Langfuse for end-to-end observability. The trace begins when the Durable Object alarm fires (i.e., after the debounce delay expires), not when the email first arrives:
 
 ```
 email-summarize (Trace)
@@ -175,6 +207,14 @@ Discord OAuth authentication flow:
 | Discord Webhook rate limited (429) | Log error, no retry |
 | Langfuse API call failed | Log error, main flow continues uninterrupted (GracefulDegradation) |
 
+### Debounce Errors
+
+| Error Condition | Handling |
+|-----------------|----------|
+| Durable Object alarm failed to fire | Stored state remains; next email for same Issue retriggers alarm |
+| Durable Object storage read/write failed | Log error, email not processed (FailSafe) |
+| Summarize flow fails after alarm fires | Log error, clear stored state to avoid infinite retry |
+
 ### Authentication Errors
 
 | Error Condition | HTTP Status | Response |
@@ -235,6 +275,7 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | `LANGFUSE_SECRET_KEY` | Langfuse secret key for trace export |
 | `LANGFUSE_PUBLIC_KEY` | Langfuse public key for trace export |
 | `LANGFUSE_BASE_URL` | Langfuse API endpoint (default: `https://cloud.langfuse.com`) |
+| `DEBOUNCE_DELAY` | Debounce delay in seconds for same-Issue emails (default: `300`) |
 
 ---
 
@@ -249,6 +290,8 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Presenter | Component responsible for formatting output and sending to external services |
 | FailSafe | Service call failure is caught, error is logged, and a safe default (null/false) is returned instead of propagating the exception |
 | GracefulDegradation | Optional dependencies (Langfuse, CF AI Gateway) are silently skipped when unavailable, core flow continues unaffected |
+| Debounce | Delaying action until a quiet period has passed; resets on each new trigger within the window |
+| Durable Object | Cloudflare Workers stateful singleton used to manage per-Issue debounce timer and context |
 
 ---
 
