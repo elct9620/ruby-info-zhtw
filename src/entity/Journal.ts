@@ -1,26 +1,15 @@
 export class Journal {
-	private _userName: string = '';
-	private _notes: string = '';
+	readonly id: number;
+	readonly userName: string;
+	readonly notes: string;
 
-	constructor(public readonly id: number) {}
-
-	get userName(): string {
-		return this._userName;
-	}
-
-	get notes(): string {
-		return this._notes;
-	}
-
-	set userName(userName: string) {
-		this._userName = userName;
-	}
-
-	set notes(notes: string) {
-		this._notes = notes;
+	constructor(id: number, userName: string, notes: string) {
+		this.id = id;
+		this.userName = userName;
+		this.notes = notes;
 	}
 
 	isValid(): boolean {
-		return this._userName.length > 0 && this._notes.length > 0;
+		return this.userName.length > 0 && this.notes.length > 0;
 	}
 }

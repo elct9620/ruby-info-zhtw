@@ -22,8 +22,7 @@ describe('SpanTrackedIssueRepository', () => {
 	});
 
 	it('delegates findById to inner repository', async () => {
-		const issue = new Issue(42);
-		issue.subject = 'Test';
+		const issue = new Issue(42, { subject: 'Test', description: '', authorName: '', link: '' });
 		vi.mocked(innerRepository.findById).mockResolvedValue(issue);
 
 		const tracked = new SpanTrackedIssueRepository(innerRepository, langfuseService, 'trace-1');
@@ -34,8 +33,7 @@ describe('SpanTrackedIssueRepository', () => {
 	});
 
 	it('sends fetch-issue span to Langfuse when issue found', async () => {
-		const issue = new Issue(42);
-		issue.subject = 'Bug report';
+		const issue = new Issue(42, { subject: 'Bug report', description: '', authorName: '', link: '' });
 		vi.mocked(innerRepository.findById).mockResolvedValue(issue);
 
 		const tracked = new SpanTrackedIssueRepository(innerRepository, langfuseService, 'trace-abc');
@@ -63,8 +61,7 @@ describe('SpanTrackedIssueRepository', () => {
 	});
 
 	it('does not throw when span creation fails', async () => {
-		const issue = new Issue(42);
-		issue.subject = 'Test';
+		const issue = new Issue(42, { subject: 'Test', description: '', authorName: '', link: '' });
 		vi.mocked(innerRepository.findById).mockResolvedValue(issue);
 		mockFetch.mockRejectedValueOnce(new Error('Network error'));
 

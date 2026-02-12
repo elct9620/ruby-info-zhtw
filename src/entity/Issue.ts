@@ -7,82 +7,46 @@ export enum IssueType {
 	Unknown = 'Unknown',
 }
 
+export interface IssueProps {
+	subject: string;
+	type?: IssueType;
+	description: string;
+	authorName: string;
+	assigneeName?: string | null;
+	link: string;
+	journals?: Journal[];
+}
+
 export class Issue {
-	private _subject: string = '';
-	private _type: IssueType = IssueType.Unknown;
-	private _description: string = '';
-	private _authorName: string = '';
-	private _assigneeName: string | null = null;
-	private _link: string = '';
-	private _journals: Journal[] = [];
+	readonly id: number;
+	readonly subject: string;
+	readonly type: IssueType;
+	readonly description: string;
+	readonly authorName: string;
+	readonly assigneeName: string | null;
+	readonly link: string;
+	private readonly _journals: Journal[];
 
-	constructor(public readonly id: number) {}
-
-	get subject(): string {
-		return this._subject;
-	}
-
-	set subject(subject: string) {
-		this._subject = subject;
-	}
-
-	get type(): IssueType {
-		return this._type;
-	}
-
-	set type(type: IssueType) {
-		this._type = type;
-	}
-
-	get description(): string {
-		return this._description;
-	}
-
-	set description(description: string) {
-		this._description = description;
-	}
-
-	get authorName(): string {
-		return this._authorName;
-	}
-
-	set authorName(authorName: string) {
-		this._authorName = authorName;
-	}
-
-	get assigneeName(): string | null {
-		return this._assigneeName;
-	}
-
-	assignTo(assigneeName: string | null): void {
-		this._assigneeName = assigneeName;
+	constructor(id: number, props: IssueProps) {
+		this.id = id;
+		this.subject = props.subject;
+		this.type = props.type ?? IssueType.Unknown;
+		this.description = props.description;
+		this.authorName = props.authorName;
+		this.assigneeName = props.assigneeName ?? null;
+		this.link = props.link;
+		this._journals = (props.journals ?? []).filter((j) => j.isValid());
 	}
 
 	isAssigned(): boolean {
-		return this._assigneeName !== null;
-	}
-
-	get link(): string {
-		return this._link;
-	}
-
-	set link(link: string) {
-		this._link = link;
+		return this.assigneeName !== null;
 	}
 
 	get journals(): Journal[] {
 		return [...this._journals];
 	}
 
-	addJournal(journal: Journal): void {
-		if (!journal.isValid()) {
-			return;
-		}
-
-		this._journals = [...this._journals, journal];
-	}
-
 	isValid(): boolean {
-		return this._subject.length > 0 && this._description.length > 0;
+		return this.subject.length > 0 && this.description.length > 0;
 	}
 }

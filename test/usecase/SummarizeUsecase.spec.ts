@@ -27,11 +27,13 @@ describe('SummarizeUsecase', () => {
 
 	describe('execute', () => {
 		it('fetches issue, generates summary, and sets presenter values', async () => {
-			const issue = new Issue(12345);
-			issue.subject = 'Test Issue Subject';
-			issue.description = 'Test description';
-			issue.link = 'https://bugs.ruby-lang.org/issues/12345';
-			issue.type = IssueType.Feature;
+			const issue = new Issue(12345, {
+				subject: 'Test Issue Subject',
+				description: 'Test description',
+				link: 'https://bugs.ruby-lang.org/issues/12345',
+				type: IssueType.Feature,
+				authorName: '',
+			});
 
 			vi.mocked(mockRepository.findById).mockResolvedValue(issue);
 			vi.mocked(mockService.execute).mockResolvedValue('Generated summary text');
@@ -60,17 +62,15 @@ describe('SummarizeUsecase', () => {
 		});
 
 		it('handles issue with journals correctly', async () => {
-			const issue = new Issue(12345);
-			issue.subject = 'Issue with journals';
-			issue.description = 'Description';
-			issue.link = 'https://bugs.ruby-lang.org/issues/12345';
-			issue.type = IssueType.Bug;
-			issue.authorName = 'Author';
-
-			const journal = new Journal(1);
-			journal.userName = 'Commenter';
-			journal.notes = 'This is a comment';
-			issue.addJournal(journal);
+			const journal = new Journal(1, 'Commenter', 'This is a comment');
+			const issue = new Issue(12345, {
+				subject: 'Issue with journals',
+				description: 'Description',
+				link: 'https://bugs.ruby-lang.org/issues/12345',
+				type: IssueType.Bug,
+				authorName: 'Author',
+				journals: [journal],
+			});
 
 			vi.mocked(mockRepository.findById).mockResolvedValue(issue);
 			vi.mocked(mockService.execute).mockResolvedValue('Summary with journals');
@@ -83,11 +83,13 @@ describe('SummarizeUsecase', () => {
 		});
 
 		it('passes correct issue type to presenter for Misc type', async () => {
-			const issue = new Issue(12345);
-			issue.subject = 'Misc Issue';
-			issue.description = 'Description';
-			issue.link = 'https://bugs.ruby-lang.org/issues/12345';
-			issue.type = IssueType.Misc;
+			const issue = new Issue(12345, {
+				subject: 'Misc Issue',
+				description: 'Description',
+				link: 'https://bugs.ruby-lang.org/issues/12345',
+				type: IssueType.Misc,
+				authorName: '',
+			});
 
 			vi.mocked(mockRepository.findById).mockResolvedValue(issue);
 			vi.mocked(mockService.execute).mockResolvedValue('Summary');
@@ -99,11 +101,13 @@ describe('SummarizeUsecase', () => {
 		});
 
 		it('passes correct issue type to presenter for Unknown type', async () => {
-			const issue = new Issue(12345);
-			issue.subject = 'Unknown Issue';
-			issue.description = 'Description';
-			issue.link = 'https://bugs.ruby-lang.org/issues/12345';
-			issue.type = IssueType.Unknown;
+			const issue = new Issue(12345, {
+				subject: 'Unknown Issue',
+				description: 'Description',
+				link: 'https://bugs.ruby-lang.org/issues/12345',
+				type: IssueType.Unknown,
+				authorName: '',
+			});
 
 			vi.mocked(mockRepository.findById).mockResolvedValue(issue);
 			vi.mocked(mockService.execute).mockResolvedValue('Summary');

@@ -58,20 +58,15 @@ export class RestIssueRepository implements IssueRepository {
 	}
 
 	private mapIssueResponse(data: IssueSchema): Issue {
-		const issue = new Issue(data.id);
-		issue.subject = data.subject;
-		issue.description = data.description;
-		issue.link = `${RestIssueRepository.API_URL}/${data.id}`;
-		issue.type = this.mapTrackerToIssueType(data.tracker?.name);
-		issue.authorName = data.author.name;
-
-		if (data.assigned_to?.name) {
-			issue.assignTo(data.assigned_to.name);
-		}
-
-		this.mapJournals(data.journals).forEach((journal) => issue.addJournal(journal));
-
-		return issue;
+		return new Issue(data.id, {
+			subject: data.subject,
+			description: data.description,
+			link: `${RestIssueRepository.API_URL}/${data.id}`,
+			type: this.mapTrackerToIssueType(data.tracker?.name),
+			authorName: data.author.name,
+			assigneeName: data.assigned_to?.name ?? null,
+			journals: this.mapJournals(data.journals),
+		});
 	}
 
 	private mapJournals(journals?: JournalSchema[]): Journal[] {
@@ -79,12 +74,7 @@ export class RestIssueRepository implements IssueRepository {
 			return [];
 		}
 
-		return journals.map((journalData) => {
-			const journal = new Journal(journalData.id);
-			journal.userName = journalData.user.name;
-			journal.notes = journalData.notes || '';
-			return journal;
-		});
+		return journals.map((journalData) => new Journal(journalData.id, journalData.user.name, journalData.notes || ''));
 	}
 
 	private mapTrackerToIssueType(trackerName?: string): IssueType {

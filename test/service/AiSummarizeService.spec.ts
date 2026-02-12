@@ -23,11 +23,13 @@ describe('AiSummarizeService', () => {
 				text: 'Generated summary text',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(12345);
-			issue.subject = 'Test Subject';
-			issue.description = 'Test Description';
-			issue.type = IssueType.Feature;
-			issue.authorName = 'Test Author';
+			const issue = new Issue(12345, {
+				subject: 'Test Subject',
+				description: 'Test Description',
+				type: IssueType.Feature,
+				authorName: 'Test Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			const result = await service.execute(issue);
@@ -44,10 +46,12 @@ describe('AiSummarizeService', () => {
 				text: 'Summary',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'John Doe';
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'John Doe',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			await service.execute(issue);
@@ -61,11 +65,13 @@ describe('AiSummarizeService', () => {
 				text: 'Summary',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
-			issue.assignTo('Assignee Name');
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				assigneeName: 'Assignee Name',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			await service.execute(issue);
@@ -79,11 +85,13 @@ describe('AiSummarizeService', () => {
 				text: 'Summary',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.type = IssueType.Bug;
-			issue.authorName = 'Author';
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				type: IssueType.Bug,
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			await service.execute(issue);
@@ -97,10 +105,12 @@ describe('AiSummarizeService', () => {
 				text: 'Summary',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Detailed issue description with technical details';
-			issue.authorName = 'Author';
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Detailed issue description with technical details',
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			await service.execute(issue);
@@ -114,20 +124,15 @@ describe('AiSummarizeService', () => {
 				text: 'Summary with journal',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
-
-			const journal1 = new Journal(1);
-			journal1.userName = 'First Commenter';
-			journal1.notes = 'First comment';
-			issue.addJournal(journal1);
-
-			const journal2 = new Journal(2);
-			journal2.userName = 'Latest Commenter';
-			journal2.notes = 'Latest comment notes';
-			issue.addJournal(journal2);
+			const journal1 = new Journal(1, 'First Commenter', 'First comment');
+			const journal2 = new Journal(2, 'Latest Commenter', 'Latest comment notes');
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+				journals: [journal1, journal2],
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			await service.execute(issue);
@@ -142,20 +147,15 @@ describe('AiSummarizeService', () => {
 				text: 'Summary',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
-
-			const journal1 = new Journal(1);
-			journal1.userName = 'User One';
-			journal1.notes = 'Comment One';
-			issue.addJournal(journal1);
-
-			const journal2 = new Journal(2);
-			journal2.userName = 'User Two';
-			journal2.notes = 'Comment Two';
-			issue.addJournal(journal2);
+			const journal1 = new Journal(1, 'User One', 'Comment One');
+			const journal2 = new Journal(2, 'User Two', 'Comment Two');
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+				journals: [journal1, journal2],
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			await service.execute(issue);
@@ -172,10 +172,12 @@ describe('AiSummarizeService', () => {
 				text: 'Summary without journals',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			const result = await service.execute(issue);
@@ -189,10 +191,12 @@ describe('AiSummarizeService', () => {
 				text: 'Summary',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			await service.execute(issue);
@@ -209,10 +213,12 @@ describe('AiSummarizeService', () => {
 				text: 'Summary',
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel);
 			const result = await service.execute(issue);
@@ -241,10 +247,12 @@ describe('AiSummarizeService', () => {
 				usage: { inputTokens: 100, outputTokens: 50 },
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(12345);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
+			const issue = new Issue(12345, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel, langfuseService);
 			await service.execute(issue);
@@ -266,10 +274,12 @@ describe('AiSummarizeService', () => {
 				usage: { inputTokens: 100, outputTokens: 50 },
 			} as Awaited<ReturnType<typeof generateText>>);
 
-			const issue = new Issue(12345);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
+			const issue = new Issue(12345, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel, langfuseService);
 			service.setTraceId('external-trace-id');
@@ -292,10 +302,12 @@ describe('AiSummarizeService', () => {
 			} as Awaited<ReturnType<typeof generateText>>);
 
 			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel, langfuseService);
 			const result = await service.execute(issue);
@@ -313,10 +325,12 @@ describe('AiSummarizeService', () => {
 			} as Awaited<ReturnType<typeof generateText>>);
 
 			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const issue = new Issue(1);
-			issue.subject = 'Subject';
-			issue.description = 'Description';
-			issue.authorName = 'Author';
+			const issue = new Issue(1, {
+				subject: 'Subject',
+				description: 'Description',
+				authorName: 'Author',
+				link: '',
+			});
 
 			const service = new AiSummarizeService(mockModel, langfuseService);
 			service.setTraceId('external-trace');
