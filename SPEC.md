@@ -18,7 +18,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 ## Success Criteria
 
 - Emails from authorized sources containing Ruby Bug Tracker links successfully generate Chinese summaries
-- Summary content correctly presents the Issue's core focus, latest discussions, technical details, and current status
+- Summary content follows the fixed four-section structure: 📌 Core Focus, 💬 Latest Discussion, 🔍 Technical Details (optional), 📊 Current Status
 - Discord Embed messages include correct colors, emojis, and links
 
 ## Non-goals
@@ -26,7 +26,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 - Processing emails not from Ruby Core mailing list
 - Providing real-time chat or interactive features
 - Storing historical summary data
-- `/simulate` route is currently a feature placeholder, full simulation functionality not yet implemented
+- Full simulation functionality (the `/simulate` route is a placeholder)
 
 ---
 
@@ -75,11 +75,21 @@ Routing decisions after email reception:
 | In allowed list | No Bug Tracker link | `ForwardAdmin`: Forward to administrator |
 | Not in allowed list | Any | `ForwardAdmin`: Forward to administrator |
 
+**Bug Tracker link extraction:**
+- URL pattern: `https://bugs.ruby-lang.org/issues/{id}` (id is numeric)
+- Search scope: plain text body of the email
+- Multiple links: only the first match is processed
+
+**Email forwarding:**
+- Uses Cloudflare Email Routing native forwarding
+- Original email is preserved (sender, subject, body, attachments)
+
 **Allowed sender domains:**
 - `frost.tw`
 - `aotoki.me`
 - `nue.mailmanlists.eu`
 - `ml.ruby-lang.org`
+- Domain matching uses suffix comparison (endsWith), subdomains are accepted
 
 ### Summarization
 
@@ -128,7 +138,7 @@ Issue type to visual presentation mapping:
 
 **Content limits:**
 - Summary length: 500-800 characters
-- Discord Embed description: max 3000 characters (truncated with notice if exceeded)
+- Discord Embed description: max 3000 characters (truncated with `...(內容過長，已截斷)` if exceeded)
 - Footer: `由 AI 自動歸納，僅供參考 | 類型: {type}`
 
 ### Authentication
@@ -161,6 +171,8 @@ Discord OAuth authentication flow:
 | Bug Tracker API cannot fetch Issue | Log error, no Discord message sent |
 | OpenAI API call failed | Log error, no Discord message sent |
 | Discord Webhook send failed | Log HTTP status code and response content |
+| Discord Webhook rate limited (429) | Log error, no retry |
+| Langfuse API call failed | Log error, main flow continues uninterrupted (GracefulDegradation) |
 
 ### Authentication Errors
 
@@ -180,7 +192,7 @@ Discord OAuth authentication flow:
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
 | `/` | GET | No | Health check, returns `"Ruby Information Bot"` |
-| `/auth/discord` | GET | OAuth | Discord OAuth authentication flow |
+| `/auth/discord` | GET | OAuth | Discord OAuth flow (handles both initiation and callback via Hono discord-auth middleware) |
 | `/simulate` | GET | Session | Protected route (feature not implemented) |
 
 ### Email Handler
@@ -234,6 +246,8 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Summarize | The action of converting Issue content to Chinese summary |
 | ForwardAdmin | Routing decision to forward email to administrator |
 | Presenter | Component responsible for formatting output and sending to external services |
+| FailSafe | Service call failure is caught, error is logged, and a safe default (null/false) is returned instead of propagating the exception |
+| GracefulDegradation | Optional dependencies (Langfuse, CF AI Gateway) are silently skipped when unavailable, core flow continues unaffected |
 
 ---
 
