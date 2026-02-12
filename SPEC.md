@@ -79,6 +79,7 @@ Routing decisions after email reception:
 - URL pattern: `https://bugs.ruby-lang.org/issues/{id}` (id is numeric)
 - Search scope: plain text body of the email
 - Multiple links: only the first match is processed
+- No plain text body: treated as no Bug Tracker link (routes to ForwardAdmin)
 
 **Email forwarding:**
 - Uses Cloudflare Email Routing native forwarding
@@ -168,8 +169,8 @@ Discord OAuth authentication flow:
 | Error Condition | Handling |
 |-----------------|----------|
 | Email parsing failed | Log error, email not processed |
-| Bug Tracker API cannot fetch Issue | Log error, no Discord message sent |
-| OpenAI API call failed | Log error, no Discord message sent |
+| Bug Tracker API cannot fetch Issue | Log error, no Discord message sent (FailSafe) |
+| OpenAI API call failed | Log error, no Discord message sent (FailSafe) |
 | Discord Webhook send failed | Log HTTP status code and response content |
 | Discord Webhook rate limited (429) | Log error, no retry |
 | Langfuse API call failed | Log error, main flow continues uninterrupted (GracefulDegradation) |
