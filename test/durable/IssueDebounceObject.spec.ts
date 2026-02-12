@@ -50,8 +50,7 @@ function createStub() {
 	return env.ISSUE_DEBOUNCE.get(id);
 }
 
-// TODO: Re-enable after Phase 2 SQLite migration completes
-describe.skip('IssueDebounceObject', () => {
+describe('IssueDebounceObject', () => {
 	const originalFetch = global.fetch;
 	let logSpy: ReturnType<typeof vi.spyOn>;
 	let errorSpy: ReturnType<typeof vi.spyOn>;
