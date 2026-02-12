@@ -13,4 +13,5 @@ export interface SummarizePresenter {
 	setType(type: IssueType): void;
 	setLink(link: string): void;
 	setDescription(description: string): void;
+	render(): Promise<void>;
 }

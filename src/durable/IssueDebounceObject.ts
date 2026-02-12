@@ -3,6 +3,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 import { CloudflareConfig } from '@/config';
 import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
+import { SpanTrackedSummarizePresenter } from '@/presenter/SpanTrackedSummarizePresenter';
 import { RestIssueRepository } from '@/repository/RestIssueRepository';
 import { SpanTrackedIssueRepository } from '@/repository/SpanTrackedIssueRepository';
 import { AiSummarizeService } from '@/service/AiSummarizeService';
@@ -85,31 +86,18 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		if (langfuseService) {
 			summarizeService.setTraceId(traceId);
 		}
-		const presenter = new DiscordSummarizePresenter();
 
 		const trackedRepository = langfuseService
 			? new SpanTrackedIssueRepository(repository, langfuseService, traceId)
 			: repository;
 
+		const basePresenter = new DiscordSummarizePresenter(config.discordWebhook);
+		const presenter = langfuseService
+			? new SpanTrackedSummarizePresenter(basePresenter, langfuseService, traceId)
+			: basePresenter;
+
 		const useCase = new SummarizeUsecase(trackedRepository, summarizeService, presenter);
 		await useCase.execute(issueId);
-
-		const renderStart = new Date();
-		const renderSuccess = await presenter.render(config.discordWebhook);
-		const renderEnd = new Date();
-		try {
-			await langfuseService?.createSpan({
-				id: crypto.randomUUID(),
-				traceId,
-				name: 'discord-webhook',
-				startTime: renderStart,
-				endTime: renderEnd,
-				input: { webhookUrl: '[redacted]' },
-				output: { success: renderSuccess },
-			});
-		} catch (error) {
-			console.error('Failed to create discord-webhook span:', error);
-		}
 
 		try {
 			await langfuseService?.finalizeTrace({

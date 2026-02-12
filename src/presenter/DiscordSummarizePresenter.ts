@@ -8,7 +8,7 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 	private description: string;
 	private type: IssueType;
 
-	constructor() {
+	constructor(private readonly webhookUrl: string) {
 		this.title = '';
 		this.link = '';
 		this.description = '';
@@ -31,10 +31,9 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 		this.type = type;
 	}
 
-	async render(webhookUrl: string): Promise<boolean> {
-		// Get color and emoji based on issue type
+	async render(): Promise<void> {
 		const { color, emoji } = this.getTypeProperties(this.type);
-		
+
 		const payload = {
 			embeds: [
 				{
@@ -50,7 +49,7 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 			],
 		};
 
-		const response = await fetch(webhookUrl, {
+		const response = await fetch(this.webhookUrl, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -63,8 +62,6 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 			console.error(`Failed to send to Discord: ${response.status} ${response.statusText}`);
 			console.error(await response.text());
 		}
-
-		return response.ok;
 	}
 	
 	/**

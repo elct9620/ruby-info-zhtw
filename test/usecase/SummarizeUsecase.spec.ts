@@ -21,6 +21,7 @@ describe('SummarizeUsecase', () => {
 			setDescription: vi.fn(),
 			setLink: vi.fn(),
 			setType: vi.fn(),
+			render: vi.fn(),
 		};
 	});
 
@@ -44,6 +45,7 @@ describe('SummarizeUsecase', () => {
 			expect(mockPresenter.setDescription).toHaveBeenCalledWith('Generated summary text');
 			expect(mockPresenter.setLink).toHaveBeenCalledWith('https://bugs.ruby-lang.org/issues/12345');
 			expect(mockPresenter.setType).toHaveBeenCalledWith(IssueType.Feature);
+			expect(mockPresenter.render).toHaveBeenCalledOnce();
 		});
 
 		it('throws error when issue is not found', async () => {
@@ -54,6 +56,7 @@ describe('SummarizeUsecase', () => {
 			await expect(usecase.execute(99999)).rejects.toThrow('Failed to fetch issue with ID: 99999');
 			expect(mockService.execute).not.toHaveBeenCalled();
 			expect(mockPresenter.setTitle).not.toHaveBeenCalled();
+			expect(mockPresenter.render).not.toHaveBeenCalled();
 		});
 
 		it('handles issue with journals correctly', async () => {
