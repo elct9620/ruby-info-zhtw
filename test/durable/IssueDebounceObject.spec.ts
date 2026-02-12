@@ -171,6 +171,24 @@ describe('IssueDebounceObject', () => {
 			);
 		});
 
+		it('clears alarm after successful processing', async () => {
+			global.fetch = mockAllFetch();
+			const stub = createStub();
+
+			await stub.handleEmail(ISSUE_ID);
+			await runDurableObjectAlarm(stub);
+
+			// After alarm completes, a new cycle should work end-to-end
+			const newFetch = mockAllFetch();
+			global.fetch = newFetch;
+
+			await stub.handleEmail(ISSUE_ID);
+			await runDurableObjectAlarm(stub);
+
+			const urls = newFetch.mock.calls.map((call: unknown[]) => String(call[0]));
+			expect(urls.some((u: string) => u.includes(`bugs.ruby-lang.org/issues/${ISSUE_ID}`))).toBe(true);
+		});
+
 		it('clears state even when summarize fails', async () => {
 			global.fetch = vi.fn().mockImplementation((url: string) => {
 				if (typeof url === 'string' && url.includes('bugs.ruby-lang.org')) {

@@ -45,6 +45,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		const state = await this.ctx.storage.get<DebounceState>('state');
 		if (!state) return;
 
+		const initialEmailCount = state.emailCount;
 		console.log(`[debounce] Alarm fired for issue ${state.issueId}, ${state.emailCount} emails received`);
 
 		try {
@@ -52,7 +53,14 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		} catch (error) {
 			console.error(`[debounce] Error processing issue ${state.issueId}:`, error);
 		} finally {
-			await this.ctx.storage.deleteAll();
+			await this.ctx.blockConcurrencyWhile(async () => {
+				const currentState = await this.ctx.storage.get<DebounceState>('state');
+				if (currentState && currentState.emailCount > initialEmailCount) {
+					return;
+				}
+				await this.ctx.storage.deleteAlarm();
+				await this.ctx.storage.deleteAll();
+			});
 		}
 	}
 
