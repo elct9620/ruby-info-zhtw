@@ -65,6 +65,11 @@ export class CloudflareConfig {
 	get langfuseBaseUrl(): string {
 		return this.env.LANGFUSE_BASE_URL || 'https://cloud.langfuse.com';
 	}
+
+	get debounceDelay(): number {
+		const seconds = parseInt(this.env.DEBOUNCE_DELAY || '300', 10);
+		return seconds * 1000;
+	}
 }
 
 export default new CloudflareConfig(env);

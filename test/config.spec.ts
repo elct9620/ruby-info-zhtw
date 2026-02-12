@@ -159,6 +159,29 @@ describe('CloudflareConfig', () => {
 		});
 	});
 
+	describe('debounceDelay', () => {
+		it('returns default 300000ms when DEBOUNCE_DELAY is not set', () => {
+			const env = createMockEnv();
+			const config = new CloudflareConfig(env);
+
+			expect(config.debounceDelay).toBe(300000);
+		});
+
+		it('converts DEBOUNCE_DELAY seconds to milliseconds', () => {
+			const env = createMockEnv({ DEBOUNCE_DELAY: '60' } as Partial<MockEnv>);
+			const config = new CloudflareConfig(env);
+
+			expect(config.debounceDelay).toBe(60000);
+		});
+
+		it('handles zero value', () => {
+			const env = createMockEnv({ DEBOUNCE_DELAY: '0' } as Partial<MockEnv>);
+			const config = new CloudflareConfig(env);
+
+			expect(config.debounceDelay).toBe(0);
+		});
+	});
+
 	describe('langfuseBaseUrl', () => {
 		it('returns LANGFUSE_BASE_URL from env when set', () => {
 			const env = createMockEnv({ LANGFUSE_BASE_URL: 'https://custom.langfuse.com' } as Partial<MockEnv>);
