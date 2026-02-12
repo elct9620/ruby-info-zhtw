@@ -52,7 +52,9 @@
 		]
 	},
 	"migrations": [
-		{ "tag": "v1", "new_classes": ["IssueDebounceObject"] }
+		{ "tag": "v1", "new_classes": ["IssueDebounceObject"] },
+		{ "tag": "v2", "deleted_classes": ["IssueDebounceObject"] },
+		{ "tag": "v3", "new_sqlite_classes": ["IssueDebounceObject"] }
 	],
 	"vars": {
 		"DISCORD_ALLOW_GUILD_ID": "1245197991191642262",
