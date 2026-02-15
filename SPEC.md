@@ -51,7 +51,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 | Input Assumptions | Output Guarantees |
 |-------------------|-------------------|
 | Email arrives via Cloudflare Email Routing | Discord Embed formatted summary message |
-| Bug Tracker API is available and returns JSON | Error conditions logged to console |
+| Bug Tracker API is available and returns JSON | Error conditions logged as structured JSON |
 | OpenAI API is available | Email is summarized, forwarded, or rejected |
 
 ### Control
@@ -116,41 +116,15 @@ When EmailDispatcher routes an email as `Summarize`, the system defers processin
 
 **Observability:**
 
-Debounce events are logged via `console.log` for diagnostics (not traced in Langfuse, as debounce occurs before the Summarize flow):
+Debounce events are logged as structured JSON for diagnostics (not traced in Langfuse, as debounce occurs before the Summarize flow). All log entries follow the Structured Logging standard defined in the Observability section.
 
-| Event | Log Content |
-|-------|-------------|
-| Email received, entering debounce | Issue ID, Durable Object ID |
-| Timer reset by subsequent email | Issue ID, previous remaining delay |
-| Alarm fires, starting Summarize flow | Issue ID, total emails received during debounce window |
+| Event | Level | Required Fields |
+|-------|-------|-----------------|
+| Email received, entering debounce | info | `issueId`, `durableObjectId` |
+| Timer reset by subsequent email | info | `issueId`, `previousRemainingDelay` |
+| Alarm fires, starting Summarize flow | info | `issueId`, `emailCount` |
 
 ### Summarization
-
-#### Observability
-
-The entire email summarization flow is traced via Langfuse for end-to-end observability. The trace begins when the Durable Object alarm fires (i.e., after the debounce delay expires), not when the email first arrives:
-
-```
-email-summarize (Trace)
-├── fetch-issue (Span) — Bug Tracker API call
-├── llm-call (Generation) — AI summary generation
-└── discord-webhook (Span) — Discord Webhook delivery
-```
-
-| Trace Property | Value |
-|----------------|-------|
-| Trace name | `email-summarize` |
-| Trace tags | `['summarize']` |
-| Trace input | `{ issueId }` |
-| Trace output | `{ success: true }` or `{ success: false, error }` |
-
-| Child Event | Type | Description |
-|-------------|------|-------------|
-| `fetch-issue` | Span | Tracks Bug Tracker API latency; records `issueId` as input and whether the issue was found |
-| `llm-call` | Generation | Tracks AI model call with prompt, response, token usage, and model ID |
-| `discord-webhook` | Span | Tracks Discord Webhook delivery; records success status |
-
-Traces are exported to Langfuse for monitoring request flow, AI model usage, latency, and costs. When Langfuse credentials are not configured, tracing is silently skipped.
 
 #### Issue Type Presentation
 
@@ -194,26 +168,106 @@ Discord OAuth authentication flow:
 
 ---
 
+## Observability
+
+### Structured Logging
+
+All log output uses JSON objects passed through `console.log` / `console.error` (natively supported by Cloudflare Workers Logs), enabling automatic field indexing and efficient querying.
+
+**Required fields** (every log entry must include):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `level` | string | Log level (`debug`, `info`, `warn`, `error`) |
+| `message` | string | Human-readable description of the event |
+| `component` | string | Source module name (e.g., `EmailDispatcher`, `SummarizeUsecase`, `IssueDebounceObject`) |
+
+**Optional fields** (include when relevant to the event):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `issueId` | number | Ruby Bug Tracker Issue ID |
+| `durableObjectId` | string | Durable Object identifier |
+| `error` | string | Error message or stack trace |
+| `url` | string | Related URL (API endpoint, webhook) |
+| `statusCode` | number | HTTP response status code |
+
+**Log level mapping:**
+
+| Level | Usage | console method |
+|-------|-------|----------------|
+| debug | Development diagnostic information | `console.log` |
+| info | Normal business events | `console.log` |
+| warn | Expected anomalies | `console.warn` |
+| error | Unexpected errors | `console.error` |
+
+**Example:**
+
+```json
+{
+  "level": "info",
+  "message": "Debounce alarm fired, starting summarize flow",
+  "component": "IssueDebounceObject",
+  "issueId": 12345,
+  "emailCount": 3
+}
+```
+
+### Langfuse Tracing
+
+The entire email summarization flow is traced via Langfuse for end-to-end observability. The trace begins when the Durable Object alarm fires (i.e., after the debounce delay expires), not when the email first arrives:
+
+```
+email-summarize (Trace)
+├── fetch-issue (Span) — Bug Tracker API call
+├── llm-call (Generation) — AI summary generation
+└── discord-webhook (Span) — Discord Webhook delivery
+```
+
+| Trace Property | Value |
+|----------------|-------|
+| Trace name | `email-summarize` |
+| Trace tags | `['summarize']` |
+| Trace input | `{ issueId }` |
+| Trace output | `{ success: true }` or `{ success: false, error }` |
+
+| Child Event | Type | Description |
+|-------------|------|-------------|
+| `fetch-issue` | Span | Tracks Bug Tracker API latency; records `issueId` as input and whether the issue was found |
+| `llm-call` | Generation | Tracks AI model call with prompt, response, token usage, and model ID |
+| `discord-webhook` | Span | Tracks Discord Webhook delivery; records success status |
+
+Traces are exported to Langfuse for monitoring request flow, AI model usage, latency, and costs. When Langfuse credentials are not configured, tracing is silently skipped.
+
+### Observability Layering
+
+| Layer | Tool | Responsibility |
+|-------|------|----------------|
+| Structured Logging | Workers Logs (console) | Global diagnostics, error tracking, debounce events |
+| Distributed Tracing | Langfuse | End-to-end summarization flow performance, AI model usage and cost |
+
+---
+
 ## Error Scenarios
 
 ### Email Processing Errors
 
 | Error Condition | Handling |
 |-----------------|----------|
-| Email parsing failed | Log error, email not processed |
-| Bug Tracker API cannot fetch Issue | Log error, no Discord message sent (FailSafe) |
-| OpenAI API call failed | Log error, no Discord message sent (FailSafe) |
-| Discord Webhook send failed | Log HTTP status code and response content |
-| Discord Webhook rate limited (429) | Log error, no retry |
-| Langfuse API call failed | Log error, main flow continues uninterrupted (GracefulDegradation) |
+| Email parsing failed | Log structured error, email not processed |
+| Bug Tracker API cannot fetch Issue | Log structured error, no Discord message sent (FailSafe) |
+| OpenAI API call failed | Log structured error, no Discord message sent (FailSafe) |
+| Discord Webhook send failed | Log structured error with HTTP status code and response content |
+| Discord Webhook rate limited (429) | Log structured error, no retry |
+| Langfuse API call failed | Log structured error, main flow continues uninterrupted (GracefulDegradation) |
 
 ### Debounce Errors
 
 | Error Condition | Handling |
 |-----------------|----------|
 | Durable Object alarm failed to fire | Stored state remains; next email for same Issue retriggers alarm |
-| Durable Object storage read/write failed | Log error, email not processed (FailSafe) |
-| Summarize flow fails after alarm fires | Log error, clear stored state to avoid infinite retry |
+| Durable Object storage read/write failed | Log structured error, email not processed (FailSafe) |
+| Summarize flow fails after alarm fires | Log structured error, clear stored state to avoid infinite retry |
 
 ### Authentication Errors
 
@@ -292,9 +346,12 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | GracefulDegradation | Optional dependencies (Langfuse, CF AI Gateway) are silently skipped when unavailable, core flow continues unaffected |
 | Debounce | Delaying action until a quiet period has passed; resets on each new trigger within the window |
 | Durable Object | Cloudflare Workers stateful singleton used to manage per-Issue debounce timer and context |
+| Structured Log | A JSON-formatted log entry with standardized fields (`level`, `message`, `component`) output via `console` methods for Cloudflare Workers Logs |
 
 ---
 
 ## Implementation Standards
 
 See [docs/architecture.md](docs/architecture.md) for Clean Architecture implementation details.
+
+All logging must follow the Structured Logging standard defined in the Observability section.
