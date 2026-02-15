@@ -26,14 +26,14 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		if (existing) {
 			const currentAlarm = await this.ctx.storage.getAlarm();
 			const remaining = currentAlarm ? currentAlarm - Date.now() : 0;
-			logger.info('Timer reset for issue', { issueId, durableObjectId: this.ctx.id.toString(), previousRemainingMs: remaining });
+			logger.info(`Debounce timer reset due to new email for issue #${issueId}`, { issueId, durableObjectId: this.ctx.id.toString(), previousRemainingMs: remaining });
 
 			await this.ctx.storage.put<DebounceState>('state', {
 				issueId,
 				emailCount: existing.emailCount + 1,
 			});
 		} else {
-			logger.info('Email received, entering debounce', { issueId, durableObjectId: this.ctx.id.toString() });
+			logger.info(`New debounce started for issue #${issueId}`, { issueId, durableObjectId: this.ctx.id.toString() });
 
 			await this.ctx.storage.put<DebounceState>('state', {
 				issueId,
@@ -49,12 +49,12 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		if (!state) return;
 
 		const initialEmailCount = state.emailCount;
-		logger.info('Alarm fired', { issueId: state.issueId, emailCount: state.emailCount });
+		logger.info(`Debounce alarm triggered for issue #${state.issueId} after ${state.emailCount} emails, starting summarization`, { issueId: state.issueId, emailCount: state.emailCount });
 
 		try {
 			await this.summarize(state.issueId);
 		} catch (error) {
-			logger.error('Error processing issue', { issueId: state.issueId, error: error instanceof Error ? error.message : String(error) });
+			logger.error(`Summarization failed for issue #${state.issueId}: ${error instanceof Error ? error.message : String(error)}`, { issueId: state.issueId, error: error instanceof Error ? error.message : String(error) });
 		} finally {
 			await this.ctx.blockConcurrencyWhile(async () => {
 				const currentState = await this.ctx.storage.get<DebounceState>('state');
@@ -89,7 +89,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 				tags: ['summarize'],
 			});
 		} catch (error) {
-			logger.error('Failed to create Langfuse trace', { error: error instanceof Error ? error.message : String(error) });
+			logger.error(`Failed to initialize Langfuse trace for issue #${issueId}: ${error instanceof Error ? error.message : String(error)}`, { issueId, error: error instanceof Error ? error.message : String(error) });
 		}
 
 		const repository = new RestIssueRepository();
@@ -116,7 +116,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 				output: { success: true },
 			});
 		} catch (error) {
-			logger.error('Failed to finalize Langfuse trace', { error: error instanceof Error ? error.message : String(error) });
+			logger.error(`Failed to finalize Langfuse trace for issue #${issueId}: ${error instanceof Error ? error.message : String(error)}`, { issueId, error: error instanceof Error ? error.message : String(error) });
 		}
 	}
 }

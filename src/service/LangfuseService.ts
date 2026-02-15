@@ -220,7 +220,7 @@ export class LangfuseService {
 		});
 
 		if (!response.ok) {
-			logger.error('Langfuse ingestion failed', { statusCode: response.status });
+			logger.error(`Langfuse ingestion API returned HTTP ${response.status} ${response.statusText}`, { statusCode: response.status, statusText: response.statusText });
 		}
 	}
 }

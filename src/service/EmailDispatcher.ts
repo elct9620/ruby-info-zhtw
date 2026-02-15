@@ -41,7 +41,7 @@ export class EmailDispatcher {
 		const senderDomain = from.split('@')[1]?.toLowerCase();
 
 		if (!this.isAllowedSenderDomain(senderDomain)) {
-			logger.warn('Unauthorized sender domain', { senderDomain });
+			logger.warn(`Unauthorized sender domain: ${senderDomain}`, { senderDomain });
 			return {
 				type: EmailDispatchType.ForwardAdmin,
 				text: `Unauthorized sender domain: ${senderDomain}`,
@@ -52,7 +52,7 @@ export class EmailDispatcher {
 		const issueId = this.extractIssueId(parsedEmail.text);
 
 		if (issueId === null) {
-			logger.warn('No issue link found in the email body');
+			logger.warn(`No issue link found in email from ${from}`, { from });
 			return {
 				type: EmailDispatchType.ForwardAdmin,
 				text: 'No issue link found in the email body.',

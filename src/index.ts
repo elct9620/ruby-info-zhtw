@@ -32,12 +32,12 @@ export default {
 			}
 
 			case EmailDispatchType.ForwardAdmin:
-				logger.info('Forwarding email to admin', { reason: route.text });
+				logger.info(`Forwarding email from ${message.from} to admin: ${route.text}`, { from: message.from, reason: route.text });
 				await message.forward(route.params.adminEmail);
 				break;
 
 			case EmailDispatchType.Reject:
-				logger.info('Rejecting email', { reason: route.text });
+				logger.info(`Rejecting email from ${message.from}: ${route.text}`, { from: message.from, reason: route.text });
 				message.setReject(route.text);
 				break;
 		}

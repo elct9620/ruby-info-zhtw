@@ -38,24 +38,24 @@ export class RestIssueRepository implements IssueRepository {
 	async findById(id: number): Promise<Issue | null> {
 		try {
 			const url = `${RestIssueRepository.API_URL}/${id}.json?include=journals`;
-			logger.info('Fetching issue', { url, issueId: id });
+			logger.debug(`Fetching issue #${id} from Redmine API`, { url, issueId: id });
 
 			const response = await fetch(url);
 			if (!response.ok) {
-				logger.error('Failed to fetch issue', { statusCode: response.status, url });
+				logger.error(`Redmine API returned HTTP ${response.status} for issue #${id}`, { statusCode: response.status, statusText: response.statusText, url });
 				return null;
 			}
 
 			const { issue } = (await response.json()) as IssueResponse;
 
 			if (!issue) {
-				logger.error('No issue data found in the response', { issueId: id });
+				logger.error(`Redmine API returned empty payload for issue #${id}`, { issueId: id, url });
 				return null;
 			}
 
 			return this.mapIssueResponse(issue);
 		} catch (error) {
-			logger.error('Error fetching issue', { error: error instanceof Error ? error.message : String(error) });
+			logger.error(`Unexpected error fetching issue #${id} from Redmine: ${error instanceof Error ? error.message : String(error)}`, { issueId: id, error: error instanceof Error ? error.message : String(error) });
 			return null;
 		}
 	}

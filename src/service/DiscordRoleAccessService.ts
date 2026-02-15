@@ -24,7 +24,7 @@ export class DiscordRoleAccessService {
 			});
 
 			if (!memberResponse.ok) {
-				logger.error('Unable to fetch user roles', { error: await memberResponse.text() });
+				logger.error(`Discord API returned HTTP ${memberResponse.status} when fetching member roles`, { statusCode: memberResponse.status, error: await memberResponse.text() });
 				return false;
 			}
 
@@ -32,7 +32,7 @@ export class DiscordRoleAccessService {
 
 			return memberData.roles.includes(this.roleId);
 		} catch (error) {
-			logger.error('Unable to fetch user roles', { error: error instanceof Error ? error.message : String(error) });
+			logger.error(`Unexpected error fetching Discord member roles: ${error instanceof Error ? error.message : String(error)}`, { error: error instanceof Error ? error.message : String(error) });
 			return false;
 		}
 	}
