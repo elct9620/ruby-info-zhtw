@@ -1,6 +1,9 @@
 import { UserAgent } from '@/constant';
 import { IssueType } from '@/entity/Issue';
+import { Logger } from '@/service/Logger';
 import { SummarizePresenter } from '@/usecase/interface';
+
+const logger = new Logger('DiscordSummarizePresenter');
 
 export class DiscordSummarizePresenter implements SummarizePresenter {
 	private title: string;
@@ -59,8 +62,7 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 		});
 
 		if (!response.ok) {
-			console.error(`Failed to send to Discord: ${response.status} ${response.statusText}`);
-			console.error(await response.text());
+			logger.error('Failed to send to Discord', { statusCode: response.status, url: this.webhookUrl, body: await response.text() });
 		}
 	}
 	

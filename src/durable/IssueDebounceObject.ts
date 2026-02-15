@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { createOpenAI } from '@ai-sdk/openai';
 
 import { CloudflareConfig } from '@/config';
+import { Logger } from '@/service/Logger';
 import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
 import { SpanTrackedSummarizePresenter } from '@/presenter/SpanTrackedSummarizePresenter';
 import { RestIssueRepository } from '@/repository/RestIssueRepository';
@@ -15,6 +16,8 @@ interface DebounceState {
 	emailCount: number;
 }
 
+const logger = new Logger('IssueDebounceObject');
+
 export class IssueDebounceObject extends DurableObject<Env> {
 	async handleEmail(issueId: number): Promise<void> {
 		const existing = await this.ctx.storage.get<DebounceState>('state');
@@ -23,14 +26,14 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		if (existing) {
 			const currentAlarm = await this.ctx.storage.getAlarm();
 			const remaining = currentAlarm ? currentAlarm - Date.now() : 0;
-			console.log(`[debounce] Timer reset for issue ${issueId}, previous remaining: ${remaining}ms`);
+			logger.info('Timer reset for issue', { issueId, durableObjectId: this.ctx.id.toString(), previousRemainingMs: remaining });
 
 			await this.ctx.storage.put<DebounceState>('state', {
 				issueId,
 				emailCount: existing.emailCount + 1,
 			});
 		} else {
-			console.log(`[debounce] Email received, entering debounce for issue ${issueId}, DO: ${this.ctx.id}`);
+			logger.info('Email received, entering debounce', { issueId, durableObjectId: this.ctx.id.toString() });
 
 			await this.ctx.storage.put<DebounceState>('state', {
 				issueId,
@@ -46,12 +49,12 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		if (!state) return;
 
 		const initialEmailCount = state.emailCount;
-		console.log(`[debounce] Alarm fired for issue ${state.issueId}, ${state.emailCount} emails received`);
+		logger.info('Alarm fired', { issueId: state.issueId, emailCount: state.emailCount });
 
 		try {
 			await this.summarize(state.issueId);
 		} catch (error) {
-			console.error(`[debounce] Error processing issue ${state.issueId}:`, error);
+			logger.error('Error processing issue', { issueId: state.issueId, error: error instanceof Error ? error.message : String(error) });
 		} finally {
 			await this.ctx.blockConcurrencyWhile(async () => {
 				const currentState = await this.ctx.storage.get<DebounceState>('state');
@@ -86,7 +89,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 				tags: ['summarize'],
 			});
 		} catch (error) {
-			console.error('Failed to create Langfuse trace:', error);
+			logger.error('Failed to create Langfuse trace', { error: error instanceof Error ? error.message : String(error) });
 		}
 
 		const repository = new RestIssueRepository();
@@ -113,7 +116,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 				output: { success: true },
 			});
 		} catch (error) {
-			console.error('Failed to finalize Langfuse trace:', error);
+			logger.error('Failed to finalize Langfuse trace', { error: error instanceof Error ? error.message : String(error) });
 		}
 	}
 }

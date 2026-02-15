@@ -83,7 +83,7 @@ describe('IssueDebounceObject', () => {
 
 			await stub.handleEmail(ISSUE_ID);
 
-			expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[debounce] Email received'));
+			expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'info', message: 'Email received, entering debounce', component: 'IssueDebounceObject', issueId: ISSUE_ID }));
 		});
 
 		it('resets alarm on subsequent emails', async () => {
@@ -105,7 +105,7 @@ describe('IssueDebounceObject', () => {
 			await stub.handleEmail(ISSUE_ID);
 			await stub.handleEmail(ISSUE_ID);
 
-			expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[debounce] Timer reset'));
+			expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'info', message: 'Timer reset for issue', component: 'IssueDebounceObject', issueId: ISSUE_ID }));
 		});
 	});
 
@@ -148,9 +148,7 @@ describe('IssueDebounceObject', () => {
 			await stub.handleEmail(ISSUE_ID);
 			await runDurableObjectAlarm(stub);
 
-			expect(logSpy).toHaveBeenCalledWith(
-				expect.stringContaining(`[debounce] Alarm fired for issue ${ISSUE_ID}, 2 emails received`),
-			);
+			expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'info', message: 'Alarm fired', component: 'IssueDebounceObject', issueId: ISSUE_ID, emailCount: 2 }));
 		});
 
 		it('logs error when summarize fails', async () => {
@@ -165,10 +163,7 @@ describe('IssueDebounceObject', () => {
 			await stub.handleEmail(ISSUE_ID);
 			await runDurableObjectAlarm(stub);
 
-			expect(errorSpy).toHaveBeenCalledWith(
-				expect.stringContaining(`[debounce] Error processing issue ${ISSUE_ID}`),
-				expect.any(Error),
-			);
+			expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Error processing issue', component: 'IssueDebounceObject', issueId: ISSUE_ID }));
 		});
 
 		it('clears alarm after successful processing', async () => {

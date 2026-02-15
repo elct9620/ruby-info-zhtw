@@ -1,6 +1,9 @@
 import { Issue, IssueType } from '@/entity/Issue';
 import { Journal } from '@/entity/Journal';
+import { Logger } from '@/service/Logger';
 import { IssueRepository } from '@/usecase/interface';
+
+const logger = new Logger('RestIssueRepository');
 
 type UserSchema = {
 	id: number;
@@ -35,24 +38,24 @@ export class RestIssueRepository implements IssueRepository {
 	async findById(id: number): Promise<Issue | null> {
 		try {
 			const url = `${RestIssueRepository.API_URL}/${id}.json?include=journals`;
-			console.log(`Fetching issue from ${url}`);
+			logger.info('Fetching issue', { url, issueId: id });
 
 			const response = await fetch(url);
 			if (!response.ok) {
-				console.error(`Failed to fetch issue: ${response.status} ${response.statusText}`);
+				logger.error('Failed to fetch issue', { statusCode: response.status, url });
 				return null;
 			}
 
 			const { issue } = (await response.json()) as IssueResponse;
 
 			if (!issue) {
-				console.error('No issue data found in the response');
+				logger.error('No issue data found in the response', { issueId: id });
 				return null;
 			}
 
 			return this.mapIssueResponse(issue);
 		} catch (error) {
-			console.error('Error fetching issue:', error);
+			logger.error('Error fetching issue', { error: error instanceof Error ? error.message : String(error) });
 			return null;
 		}
 	}

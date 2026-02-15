@@ -1,6 +1,9 @@
 import { Issue } from '@/entity/Issue';
+import { Logger } from '@/service/Logger';
 import { LangfuseService } from '@/service/LangfuseService';
 import { IssueRepository } from '@/usecase/interface';
+
+const logger = new Logger('SpanTrackedIssueRepository');
 
 /**
  * Wraps an IssueRepository with Langfuse span tracing for observability.
@@ -28,7 +31,7 @@ export class SpanTrackedIssueRepository implements IssueRepository {
 				output: { found: !!issue, subject: issue?.subject },
 			});
 		} catch (error) {
-			console.error('Failed to create fetch-issue span:', error);
+			logger.error('Failed to create fetch-issue span', { error: error instanceof Error ? error.message : String(error) });
 		}
 
 		return issue;

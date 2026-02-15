@@ -1,3 +1,7 @@
+import { Logger } from './Logger';
+
+const logger = new Logger('DiscordRoleAccessService');
+
 type DiscordGuideMember = {
 	roles: string[];
 };
@@ -20,7 +24,7 @@ export class DiscordRoleAccessService {
 			});
 
 			if (!memberResponse.ok) {
-				console.error('Unable to fetch user roles:', await memberResponse.text());
+				logger.error('Unable to fetch user roles', { error: await memberResponse.text() });
 				return false;
 			}
 
@@ -28,7 +32,7 @@ export class DiscordRoleAccessService {
 
 			return memberData.roles.includes(this.roleId);
 		} catch (error) {
-			console.error('Unable to fetch user roles:', error);
+			logger.error('Unable to fetch user roles', { error: error instanceof Error ? error.message : String(error) });
 			return false;
 		}
 	}

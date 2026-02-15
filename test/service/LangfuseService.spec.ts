@@ -146,7 +146,7 @@ describe('LangfuseService', () => {
 				endTime: new Date(),
 			});
 
-			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 500 Internal Server Error');
+			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion failed', component: 'LangfuseService', statusCode: 500 }));
 			consoleSpy.mockRestore();
 		});
 
@@ -369,7 +369,7 @@ describe('LangfuseService', () => {
 				endTime: new Date(),
 			});
 
-			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 500 Internal Server Error');
+			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion failed', component: 'LangfuseService', statusCode: 500 }));
 			consoleSpy.mockRestore();
 		});
 	});
@@ -446,7 +446,7 @@ describe('LangfuseService', () => {
 			const service = new LangfuseService('public-key', 'secret-key');
 			await service.createTrace({ id: 'trace-1', name: 'test' });
 
-			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 400 Bad Request');
+			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion failed', component: 'LangfuseService', statusCode: 400 }));
 			consoleSpy.mockRestore();
 		});
 	});
@@ -532,7 +532,7 @@ describe('LangfuseService', () => {
 				endTime: new Date(),
 			});
 
-			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 500 Internal Server Error');
+			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion failed', component: 'LangfuseService', statusCode: 500 }));
 			consoleSpy.mockRestore();
 		});
 	});
@@ -601,7 +601,7 @@ describe('LangfuseService', () => {
 			const service = new LangfuseService('public-key', 'secret-key');
 			await service.finalizeTrace({ traceId: 'trace-1' });
 
-			expect(consoleSpy).toHaveBeenCalledWith('Langfuse ingestion failed: 403 Forbidden');
+			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion failed', component: 'LangfuseService', statusCode: 403 }));
 			consoleSpy.mockRestore();
 		});
 	});

@@ -1,3 +1,7 @@
+import { Logger } from './Logger';
+
+const logger = new Logger('SessionCipher');
+
 export type Session = {
 	displayName: string;
 	expiredAt: number;
@@ -58,7 +62,7 @@ export class SessionCipher {
 
 			return JSON.parse(decoder.decode(decryptedData));
 		} catch (e) {
-			console.error('Failed to decrypt session:', e instanceof Error ? e.message : 'Unknown error');
+			logger.error('Failed to decrypt session', { error: e instanceof Error ? e.message : 'Unknown error' });
 			return null;
 		}
 	}

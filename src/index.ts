@@ -3,7 +3,10 @@ import { Hono } from 'hono';
 import AuthRoute from '@/controller/AuthController';
 import SimulateRoute from '@/controller/SimulateController';
 import { EmailDispatcher, EmailDispatchType } from '@/service/EmailDispatcher';
+import { Logger } from '@/service/Logger';
 import config from './config';
+
+const logger = new Logger('EmailHandler');
 
 const app = new Hono();
 
@@ -29,12 +32,12 @@ export default {
 			}
 
 			case EmailDispatchType.ForwardAdmin:
-				console.log(`Forwarding email to admin: ${route.text}`);
+				logger.info('Forwarding email to admin', { reason: route.text });
 				await message.forward(route.params.adminEmail);
 				break;
 
 			case EmailDispatchType.Reject:
-				console.log(`Rejecting email: ${route.text}`);
+				logger.info('Rejecting email', { reason: route.text });
 				message.setReject(route.text);
 				break;
 		}

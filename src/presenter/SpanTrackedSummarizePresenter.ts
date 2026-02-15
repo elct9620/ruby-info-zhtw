@@ -1,6 +1,9 @@
 import { IssueType } from '@/entity/Issue';
+import { Logger } from '@/service/Logger';
 import { LangfuseService } from '@/service/LangfuseService';
 import { SummarizePresenter } from '@/usecase/interface';
+
+const logger = new Logger('SpanTrackedSummarizePresenter');
 
 /**
  * Wraps a SummarizePresenter with Langfuse span tracing for observability.
@@ -44,7 +47,7 @@ export class SpanTrackedSummarizePresenter implements SummarizePresenter {
 				output: { success: true },
 			});
 		} catch (error) {
-			console.error('Failed to create discord-webhook span:', error);
+			logger.error('Failed to create discord-webhook span', { error: error instanceof Error ? error.message : String(error) });
 		}
 	}
 }

@@ -1,3 +1,7 @@
+import { Logger } from './Logger';
+
+const logger = new Logger('LangfuseService');
+
 export interface GenerationUsage {
 	inputTokens?: number;
 	outputTokens?: number;
@@ -216,7 +220,7 @@ export class LangfuseService {
 		});
 
 		if (!response.ok) {
-			console.error(`Langfuse ingestion failed: ${response.status} ${response.statusText}`);
+			logger.error('Langfuse ingestion failed', { statusCode: response.status });
 		}
 	}
 }

@@ -5,6 +5,9 @@ import { Issue } from '@/entity/Issue';
 import promptTemplate from '@/prompts/summarize.md';
 import { SummarizeService } from '@/usecase/interface';
 import { LangfuseService } from './LangfuseService';
+import { Logger } from './Logger';
+
+const logger = new Logger('AiSummarizeService');
 
 export class AiSummarizeService implements SummarizeService {
 	private externalTraceId?: string;
@@ -77,7 +80,7 @@ export class AiSummarizeService implements SummarizeService {
 					});
 				}
 			} catch (error) {
-				console.error('Failed to send trace to Langfuse:', error);
+				logger.error('Failed to send trace to Langfuse', { error: error instanceof Error ? error.message : String(error) });
 			}
 		}
 

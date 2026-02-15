@@ -1,5 +1,9 @@
 import * as PostalMime from 'postal-mime';
 
+import { Logger } from './Logger';
+
+const logger = new Logger('EmailDispatcher');
+
 export enum EmailDispatchType {
 	Summarize = 'summarize',
 	ForwardAdmin = 'forward_admin',
@@ -37,7 +41,7 @@ export class EmailDispatcher {
 		const senderDomain = from.split('@')[1]?.toLowerCase();
 
 		if (!this.isAllowedSenderDomain(senderDomain)) {
-			console.error(`Unauthorized sender domain: ${senderDomain}`);
+			logger.warn('Unauthorized sender domain', { senderDomain });
 			return {
 				type: EmailDispatchType.ForwardAdmin,
 				text: `Unauthorized sender domain: ${senderDomain}`,
@@ -48,7 +52,7 @@ export class EmailDispatcher {
 		const issueId = this.extractIssueId(parsedEmail.text);
 
 		if (issueId === null) {
-			console.error('No issue link found in the email body.');
+			logger.warn('No issue link found in the email body');
 			return {
 				type: EmailDispatchType.ForwardAdmin,
 				text: 'No issue link found in the email body.',
