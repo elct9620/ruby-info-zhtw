@@ -37,6 +37,8 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 
 		if (!response.ok) {
 			logger.error('Failed to send to Discord', { statusCode: response.status, url: this.webhookUrl, body: await response.text() });
+		} else {
+			await response.body?.cancel();
 		}
 	}
 

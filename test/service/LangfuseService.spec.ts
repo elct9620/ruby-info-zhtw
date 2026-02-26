@@ -537,6 +537,29 @@ describe('LangfuseService', () => {
 		});
 	});
 
+	describe('response body cancellation', () => {
+		it('cancels response body after successful ingestion', async () => {
+			const cancelFn = vi.fn();
+			mockFetch.mockResolvedValueOnce({ ok: true, body: { cancel: cancelFn } });
+
+			const service = new LangfuseService('public-key', 'secret-key');
+			await service.createTrace({ id: 'trace-1', name: 'test' });
+
+			expect(cancelFn).toHaveBeenCalledOnce();
+		});
+
+		it('cancels response body after failed ingestion', async () => {
+			const cancelFn = vi.fn();
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', body: { cancel: cancelFn } });
+
+			const service = new LangfuseService('public-key', 'secret-key');
+			await service.createTrace({ id: 'trace-1', name: 'test' });
+
+			expect(cancelFn).toHaveBeenCalledOnce();
+		});
+	});
+
 	describe('finalizeTrace', () => {
 		it('sends trace-create event for upsert with correct body', async () => {
 			const service = new LangfuseService('public-key', 'secret-key');

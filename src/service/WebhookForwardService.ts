@@ -28,6 +28,8 @@ export class WebhookForwardService {
 				body: JSON.stringify({ issue_id: issueId }),
 			});
 
+			await response.body?.cancel();
+
 			if (!response.ok) {
 				logger.error(`Webhook forward failed for issue #${issueId}: HTTP ${response.status}`, { issueId, host: new URL(url).hostname, status: response.status });
 				await this.createSpan(url, startTime, { success: false, status: response.status });

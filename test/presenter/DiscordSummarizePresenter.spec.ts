@@ -54,6 +54,16 @@ describe('DiscordSummarizePresenter', () => {
 			}))).resolves.toBeUndefined();
 		});
 
+		it('cancels response body on successful webhook response', async () => {
+			const cancelFn = vi.fn();
+			global.fetch = vi.fn().mockResolvedValue({ ok: true, body: { cancel: cancelFn } });
+
+			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
+			await presenter.render(makeResult({ title: 'Test', description: 'Test Description' }));
+
+			expect(cancelFn).toHaveBeenCalledOnce();
+		});
+
 		it('sends POST request with correct headers', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 

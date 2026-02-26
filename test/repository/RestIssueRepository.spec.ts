@@ -270,6 +270,21 @@ describe('RestIssueRepository', () => {
 		});
 
 		describe('error handling', () => {
+			it('cancels response body when API responds with error', async () => {
+				const cancelFn = vi.fn();
+				global.fetch = vi.fn().mockResolvedValue({
+					ok: false,
+					status: 404,
+					statusText: 'Not Found',
+					body: { cancel: cancelFn },
+				});
+
+				const repository = new RestIssueRepository();
+				await repository.findById(99999);
+
+				expect(cancelFn).toHaveBeenCalledOnce();
+			});
+
 			it('returns null when API responds with 404', async () => {
 				global.fetch = vi.fn().mockResolvedValue({
 					ok: false,

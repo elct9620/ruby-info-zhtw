@@ -44,6 +44,7 @@ export class RestIssueRepository implements IssueRepository {
 			const response = await fetch(url);
 			if (!response.ok) {
 				logger.error(`Redmine API returned HTTP ${response.status} for issue #${id}`, { statusCode: response.status, statusText: response.statusText, url });
+				await response.body?.cancel();
 				return null;
 			}
 

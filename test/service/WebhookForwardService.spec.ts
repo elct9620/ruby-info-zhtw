@@ -123,6 +123,26 @@ describe('WebhookForwardService', () => {
 			);
 		});
 
+		it('cancels response body after successful forward', async () => {
+			const cancelFn = vi.fn();
+			global.fetch = vi.fn().mockResolvedValue({ ok: true, body: { cancel: cancelFn } });
+			const service = new WebhookForwardService(['https://example.com/webhook']);
+
+			await service.execute(123);
+
+			expect(cancelFn).toHaveBeenCalledOnce();
+		});
+
+		it('cancels response body after failed forward', async () => {
+			const cancelFn = vi.fn();
+			global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, body: { cancel: cancelFn } });
+			const service = new WebhookForwardService(['https://example.com/webhook']);
+
+			await service.execute(123);
+
+			expect(cancelFn).toHaveBeenCalledOnce();
+		});
+
 		it('creates Langfuse span when langfuseService is provided', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 			const langfuseService = {
