@@ -15,6 +15,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 - Important Ruby Issue discussions are presented in real-time on Discord channels
 - Unauthorized emails are automatically forwarded to administrators for handling
 - Rapid-fire discussions on the same Issue are consolidated into a single summary, reducing notification noise and improving summary quality
+- Issue events can be forwarded to external systems via configured webhooks
 
 ## Success Criteria
 
@@ -22,6 +23,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 - Summary content follows the fixed four-section structure: 📌 Core Focus, 💬 Latest Discussion, 🔍 Technical Details (optional), 📊 Current Status
 - Discord Embed messages include correct colors, emojis, and links
 - Multiple emails for the same Issue within the debounce window produce only one Discord notification
+- Issue events are forwarded to all configured webhook URLs when present
 
 ## Non-goals
 
@@ -45,6 +47,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 | Send summaries to Discord Webhook | Store or search historical data |
 | Forward unprocessable emails to admin | Persist debounce state beyond processing |
 | Debounce rapid emails for the same Issue | |
+| Forward issue events to configured webhooks | |
 
 ### Interaction
 
@@ -53,6 +56,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 | Email arrives via Cloudflare Email Routing | Discord Embed formatted summary message |
 | Bug Tracker API is available and returns JSON | Error conditions logged as structured JSON |
 | OpenAI API is available | Email is summarized, forwarded, or rejected |
+| | Webhook forwarding attempted for all configured URLs (FailSafe per URL) |
 
 ### Control
 
@@ -63,7 +67,7 @@ Automatically process Ruby Core mailing list emails for the Taiwan Ruby communit
 | Discord Embed format and colors | Ruby Bug Tracker REST API |
 | Session encryption mechanism | OpenAI API |
 | Debounce delay duration | Cloudflare Durable Objects |
-| | Langfuse (optional, for observability) |
+| Webhook forwarding URL list | Langfuse (optional, for observability) |
 
 ---
 
@@ -123,6 +127,25 @@ Debounce events are logged as structured JSON for diagnostics (not traced in Lan
 | Email received, entering debounce | info | `issueId`, `durableObjectId` |
 | Timer reset by subsequent email | info | `issueId`, `previousRemainingDelay` |
 | Alarm fires, starting Summarize flow | info | `issueId`, `emailCount` |
+| Webhook forwarding started | info | `issueId`, `urlCount` |
+| Webhook forwarding succeeded for URL | info | `issueId`, `url`, `statusCode` |
+| Webhook forwarding failed for URL | error | `issueId`, `url`, `error`, `statusCode` |
+
+### Webhook Forwarding
+
+When the debounce alarm fires, the system forwards the issue event to all configured webhook URLs in parallel with — but independent from — the Summarize flow.
+
+| Property | Value |
+|----------|-------|
+| Trigger | Debounce alarm fires (same timing as Summarize) |
+| Relationship to Summarize | Independent; neither blocks nor is blocked by the other |
+| Payload | `{"issue_id": <number>}` |
+| HTTP Method | POST |
+| Content-Type | `application/json` |
+| Target | All URLs in `WEBHOOK_FORWARD_URLS` environment variable |
+| Multi-URL format | Comma-separated; each URL is trimmed of leading/trailing whitespace; literal commas within a URL must be percent-encoded as `%2C` |
+| When not configured | Silently skipped (GracefulDegradation) |
+| Error handling | FailSafe — each URL is processed independently; a failure for one URL does not affect others |
 
 ### Summarization
 
@@ -221,7 +244,8 @@ The entire email summarization flow is traced via Langfuse for end-to-end observ
 email-summarize (Trace)
 ├── fetch-issue (Span) — Bug Tracker API call
 ├── llm-call (Generation) — AI summary generation
-└── discord-webhook (Span) — Discord Webhook delivery
+├── discord-webhook (Span) — Discord Webhook delivery
+└── webhook-forward (Span) — Webhook forwarding to configured URLs
 ```
 
 | Trace Property | Value |
@@ -236,6 +260,7 @@ email-summarize (Trace)
 | `fetch-issue` | Span | Tracks Bug Tracker API latency; records `issueId` as input and whether the issue was found |
 | `llm-call` | Generation | Tracks AI model call with prompt, response, token usage, and model ID |
 | `discord-webhook` | Span | Tracks Discord Webhook delivery; records success status |
+| `webhook-forward` | Span | Tracks webhook forwarding; records per-URL success/failure |
 
 Traces are exported to Langfuse for monitoring request flow, AI model usage, latency, and costs. When Langfuse credentials are not configured, tracing is silently skipped.
 
@@ -268,6 +293,14 @@ Traces are exported to Langfuse for monitoring request flow, AI model usage, lat
 | Durable Object alarm failed to fire | Stored state remains; next email for same Issue retriggers alarm |
 | Durable Object storage read/write failed | Log structured error, email not processed (FailSafe) |
 | Summarize flow fails after alarm fires | Log structured error, clear stored state to avoid infinite retry |
+
+### Webhook Forwarding Errors
+
+| Error Condition | Handling |
+|-----------------|----------|
+| `WEBHOOK_FORWARD_URLS` not configured | Silently skipped (GracefulDegradation) |
+| Webhook URL unreachable or returns non-2xx | Log structured error with URL and status code, continue with remaining URLs (FailSafe) |
+| Webhook request times out | Log structured error, continue with remaining URLs (FailSafe) |
 
 ### Authentication Errors
 
@@ -303,6 +336,7 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Discord Webhook | Configured Webhook URL | Send summary messages |
 | OpenAI API | Via AI SDK | Generate Chinese summaries |
 | Langfuse | Via Batch Ingestion API | Trace email processing flow for observability |
+| Configured Webhooks | URLs from `WEBHOOK_FORWARD_URLS` | Forward issue event payload on debounce alarm |
 
 ---
 
@@ -330,6 +364,7 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | `LANGFUSE_PUBLIC_KEY` | Langfuse public key for trace export |
 | `LANGFUSE_BASE_URL` | Langfuse API endpoint (default: `https://cloud.langfuse.com`) |
 | `DEBOUNCE_DELAY` | Debounce delay in seconds for same-Issue emails (default: `300`) |
+| `WEBHOOK_FORWARD_URLS` | Comma-separated list of webhook URLs for issue event forwarding |
 
 ---
 
@@ -347,6 +382,7 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Debounce | Delaying action until a quiet period has passed; resets on each new trigger within the window |
 | Durable Object | Cloudflare Workers stateful singleton used to manage per-Issue debounce timer and context |
 | Structured Log | A JSON-formatted log entry with standardized fields (`level`, `message`, `component`) output via `console` methods for Cloudflare Workers Logs |
+| Webhook Forwarding | Sending a minimal issue event payload (`{"issue_id": <number>}`) to externally configured webhook URLs when a debounce alarm fires |
 
 ---
 
