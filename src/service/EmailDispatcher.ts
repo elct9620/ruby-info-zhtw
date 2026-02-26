@@ -2,8 +2,6 @@ import * as PostalMime from 'postal-mime';
 
 import { Logger } from './Logger';
 
-const logger = new Logger('EmailDispatcher');
-
 export enum EmailDispatchType {
 	Summarize = 'summarize',
 	ForwardAdmin = 'forward_admin',
@@ -31,7 +29,10 @@ const ISSUE_LINK_PATTERN = /https:\/\/bugs\.ruby-lang\.org\/issues\/(\d+)/;
 export class EmailDispatcher {
 	private readonly ALLOWED_ORIGINS = ['frost.tw', 'aotoki.me', 'nue.mailmanlists.eu', 'ml.ruby-lang.org'];
 
-	constructor(private readonly adminEmail: string) {}
+	constructor(
+		private readonly adminEmail: string,
+		private readonly logger: Logger = new Logger('EmailDispatcher'),
+	) {}
 
 	async execute(raw: ArrayBuffer): Promise<EmailRoute> {
 		const parser = new PostalMime.default();
@@ -41,7 +42,7 @@ export class EmailDispatcher {
 		const senderDomain = from.split('@')[1]?.toLowerCase();
 
 		if (!this.isAllowedSenderDomain(senderDomain)) {
-			logger.warn(`Unauthorized sender domain: ${senderDomain}`, { senderDomain });
+			this.logger.warn(`Unauthorized sender domain: ${senderDomain}`, { senderDomain });
 			return {
 				type: EmailDispatchType.ForwardAdmin,
 				text: `Unauthorized sender domain: ${senderDomain}`,
@@ -52,7 +53,7 @@ export class EmailDispatcher {
 		const issueId = this.extractIssueId(parsedEmail.text);
 
 		if (issueId === null) {
-			logger.warn(`No issue link found in email from ${from}`, { from });
+			this.logger.warn(`No issue link found in email from ${from}`, { from });
 			return {
 				type: EmailDispatchType.ForwardAdmin,
 				text: 'No issue link found in the email body.',

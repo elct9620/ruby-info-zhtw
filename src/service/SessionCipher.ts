@@ -1,14 +1,15 @@
 import { Logger } from './Logger';
 
-const logger = new Logger('SessionCipher');
-
 export type Session = {
 	displayName: string;
 	expiredAt: number;
 };
 
 export class SessionCipher {
-	constructor(private readonly key: string) {}
+	constructor(
+		private readonly key: string,
+		private readonly logger: Logger = new Logger('SessionCipher'),
+	) {}
 
 	get keyData() {
 		return new TextEncoder().encode(this.key);
@@ -62,7 +63,7 @@ export class SessionCipher {
 
 			return JSON.parse(decoder.decode(decryptedData));
 		} catch (e) {
-			logger.error('Failed to decrypt session', { error: e instanceof Error ? e.message : 'Unknown error' });
+			this.logger.error('Failed to decrypt session', { error: e instanceof Error ? e.message : 'Unknown error' });
 			return null;
 		}
 	}

@@ -1,10 +1,14 @@
 import { SELF, env } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { SessionCookieName } from '@/constant';
 import { SessionCipher } from '@/service/SessionCipher';
 
 describe('SimulateController', () => {
+	beforeEach(() => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+	});
+
 	it('returns 401 when no session cookie is present', async () => {
 		const response = await SELF.fetch('https://example.com/simulate');
 
