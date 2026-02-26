@@ -2,6 +2,17 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
 import { IssueType } from '@/entity/Issue';
 import { UserAgent } from '@/constant';
+import { SummarizeResult } from '@/usecase/interface';
+
+function makeResult(overrides: Partial<SummarizeResult> = {}): SummarizeResult {
+	return {
+		title: '',
+		description: '',
+		link: '',
+		type: IssueType.Unknown,
+		...overrides,
+	};
+}
 
 describe('DiscordSummarizePresenter', () => {
 	const originalFetch = global.fetch;
@@ -15,77 +26,16 @@ describe('DiscordSummarizePresenter', () => {
 		vi.restoreAllMocks();
 	});
 
-	describe('setters', () => {
-		it('setTitle stores the title value', () => {
-			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Test Title');
-
-			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			presenter.render();
-
-			expect(global.fetch).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					body: expect.stringContaining('Test Title'),
-				})
-			);
-		});
-
-		it('setDescription stores the description value', () => {
-			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setDescription('Test Description');
-
-			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			presenter.render();
-
-			expect(global.fetch).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					body: expect.stringContaining('Test Description'),
-				})
-			);
-		});
-
-		it('setLink stores the link value', () => {
-			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setLink('https://example.com/issue/123');
-
-			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			presenter.render();
-
-			expect(global.fetch).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					body: expect.stringContaining('https://example.com/issue/123'),
-				})
-			);
-		});
-
-		it('setType stores the type value', () => {
-			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setType(IssueType.Feature);
-
-			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			presenter.render();
-
-			expect(global.fetch).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					body: expect.stringContaining('Feature'),
-				})
-			);
-		});
-	});
-
 	describe('render', () => {
 		it('does not throw when webhook responds with 200', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Test');
-			presenter.setDescription('Test Description');
 
-			await expect(presenter.render()).resolves.toBeUndefined();
+			await expect(presenter.render(makeResult({
+				title: 'Test',
+				description: 'Test Description',
+			}))).resolves.toBeUndefined();
 		});
 
 		it('does not throw when webhook responds with non-200', async () => {
@@ -97,17 +47,18 @@ describe('DiscordSummarizePresenter', () => {
 			});
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Test');
-			presenter.setDescription('Test Description');
 
-			await expect(presenter.render()).resolves.toBeUndefined();
+			await expect(presenter.render(makeResult({
+				title: 'Test',
+				description: 'Test Description',
+			}))).resolves.toBeUndefined();
 		});
 
 		it('sends POST request with correct headers', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			await presenter.render();
+			await presenter.render(makeResult());
 
 			expect(global.fetch).toHaveBeenCalledWith(
 				'https://discord.webhook',
@@ -125,12 +76,12 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Issue Title');
-			presenter.setDescription('Issue Summary');
-			presenter.setLink('https://bugs.ruby-lang.org/issues/123');
-			presenter.setType(IssueType.Bug);
-
-			await presenter.render();
+			await presenter.render(makeResult({
+				title: 'Issue Title',
+				description: 'Issue Summary',
+				link: 'https://bugs.ruby-lang.org/issues/123',
+				type: IssueType.Bug,
+			}));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -148,10 +99,7 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			const longDescription = 'a'.repeat(3500);
-			presenter.setDescription(longDescription);
-
-			await presenter.render();
+			await presenter.render(makeResult({ description: 'a'.repeat(3500) }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -163,11 +111,9 @@ describe('DiscordSummarizePresenter', () => {
 		it('does not truncate description of exactly 3000 characters', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
-			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
 			const exactDescription = 'a'.repeat(3000);
-			presenter.setDescription(exactDescription);
-
-			await presenter.render();
+			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
+			await presenter.render(makeResult({ description: exactDescription }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -180,15 +126,12 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			const shortDescription = 'Short description';
-			presenter.setDescription(shortDescription);
-
-			await presenter.render();
+			await presenter.render(makeResult({ description: 'Short description' }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
 
-			expect(body.embeds[0].description).toBe(shortDescription);
+			expect(body.embeds[0].description).toBe('Short description');
 		});
 	});
 
@@ -197,10 +140,7 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Feature');
-			presenter.setType(IssueType.Feature);
-
-			await presenter.render();
+			await presenter.render(makeResult({ title: 'Feature', type: IssueType.Feature }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -213,10 +153,7 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Bug');
-			presenter.setType(IssueType.Bug);
-
-			await presenter.render();
+			await presenter.render(makeResult({ title: 'Bug', type: IssueType.Bug }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -229,10 +166,7 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Misc');
-			presenter.setType(IssueType.Misc);
-
-			await presenter.render();
+			await presenter.render(makeResult({ title: 'Misc', type: IssueType.Misc }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -245,10 +179,7 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Unknown');
-			presenter.setType(IssueType.Unknown);
-
-			await presenter.render();
+			await presenter.render(makeResult({ title: 'Unknown', type: IssueType.Unknown }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -257,13 +188,11 @@ describe('DiscordSummarizePresenter', () => {
 			expect(body.embeds[0].title).toContain('💎');
 		});
 
-		it('uses default color and emoji when type is not set', async () => {
+		it('uses default color and emoji when type is Unknown', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setTitle('Default');
-
-			await presenter.render();
+			await presenter.render(makeResult({ title: 'Default' }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -278,7 +207,7 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			await presenter.render();
+			await presenter.render(makeResult());
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);
@@ -291,8 +220,7 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			presenter.setType(IssueType.Bug);
-			await presenter.render();
+			await presenter.render(makeResult({ type: IssueType.Bug }));
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);

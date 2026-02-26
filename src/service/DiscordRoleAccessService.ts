@@ -1,3 +1,4 @@
+import { toErrorMessage } from '@/util/toErrorMessage';
 import { Logger } from './Logger';
 
 const logger = new Logger('DiscordRoleAccessService');
@@ -32,7 +33,7 @@ export class DiscordRoleAccessService {
 
 			return memberData.roles.includes(this.roleId);
 		} catch (error) {
-			logger.error(`Unexpected error fetching Discord member roles: ${error instanceof Error ? error.message : String(error)}`, { error: error instanceof Error ? error.message : String(error) });
+			logger.error(`Unexpected error fetching Discord member roles: ${toErrorMessage(error)}`, { error: toErrorMessage(error) });
 			return false;
 		}
 	}

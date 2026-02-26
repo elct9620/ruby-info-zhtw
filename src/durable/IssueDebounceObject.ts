@@ -3,6 +3,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 import { CloudflareConfig } from '@/config';
 import { Logger } from '@/service/Logger';
+import { toErrorMessage } from '@/util/toErrorMessage';
 import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
 import { SpanTrackedSummarizePresenter } from '@/presenter/SpanTrackedSummarizePresenter';
 import { RestIssueRepository } from '@/repository/RestIssueRepository';
@@ -28,19 +29,14 @@ export class IssueDebounceObject extends DurableObject<Env> {
 			const currentAlarm = await this.ctx.storage.getAlarm();
 			const remaining = currentAlarm ? currentAlarm - Date.now() : 0;
 			logger.info(`Debounce timer reset due to new email for issue #${issueId}`, { issueId, durableObjectId: this.ctx.id.toString(), previousRemainingMs: remaining });
-
-			await this.ctx.storage.put<DebounceState>('state', {
-				issueId,
-				emailCount: existing.emailCount + 1,
-			});
 		} else {
 			logger.info(`New debounce started for issue #${issueId}`, { issueId, durableObjectId: this.ctx.id.toString() });
-
-			await this.ctx.storage.put<DebounceState>('state', {
-				issueId,
-				emailCount: 1,
-			});
 		}
+
+		await this.ctx.storage.put<DebounceState>('state', {
+			issueId,
+			emailCount: (existing?.emailCount ?? 0) + 1,
+		});
 
 		await this.ctx.storage.setAlarm(Date.now() + config.debounceDelay);
 	}
@@ -59,37 +55,11 @@ export class IssueDebounceObject extends DurableObject<Env> {
 				: undefined;
 
 		const traceId = crypto.randomUUID();
-		try {
-			await langfuseService?.createTrace({
-				id: traceId,
-				name: 'email-summarize',
-				input: { issueId: state.issueId },
-				tags: ['summarize'],
-			});
-		} catch (error) {
-			logger.error(`Failed to initialize Langfuse trace for issue #${state.issueId}: ${error instanceof Error ? error.message : String(error)}`, { issueId: state.issueId, error: error instanceof Error ? error.message : String(error) });
-		}
+		await this.initializeTrace(langfuseService, traceId, state.issueId);
 
 		try {
-			const results = await Promise.allSettled([
-				this.summarize(state.issueId, config, langfuseService, traceId),
-				this.forwardWebhooks(state.issueId, config, langfuseService, traceId),
-			]);
-
-			for (const result of results) {
-				if (result.status === 'rejected') {
-					logger.error(`Summarization failed for issue #${state.issueId}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`, { issueId: state.issueId, error: result.reason instanceof Error ? result.reason.message : String(result.reason) });
-				}
-			}
-
-			try {
-				await langfuseService?.finalizeTrace({
-					traceId,
-					output: { success: results.every((r) => r.status === 'fulfilled') },
-				});
-			} catch (error) {
-				logger.error(`Failed to finalize Langfuse trace for issue #${state.issueId}: ${error instanceof Error ? error.message : String(error)}`, { issueId: state.issueId, error: error instanceof Error ? error.message : String(error) });
-			}
+			const results = await this.executeTasks(state.issueId, config, langfuseService, traceId);
+			await this.finalizeTrace(langfuseService, traceId, state.issueId, results);
 		} finally {
 			await this.ctx.blockConcurrencyWhile(async () => {
 				const currentState = await this.ctx.storage.get<DebounceState>('state');
@@ -102,6 +72,45 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		}
 	}
 
+	private async initializeTrace(langfuseService: LangfuseService | undefined, traceId: string, issueId: number): Promise<void> {
+		try {
+			await langfuseService?.createTrace({
+				id: traceId,
+				name: 'email-summarize',
+				input: { issueId },
+				tags: ['summarize'],
+			});
+		} catch (error) {
+			logger.error(`Failed to initialize Langfuse trace for issue #${issueId}: ${toErrorMessage(error)}`, { issueId, error: toErrorMessage(error) });
+		}
+	}
+
+	private async executeTasks(issueId: number, config: CloudflareConfig, langfuseService: LangfuseService | undefined, traceId: string): Promise<PromiseSettledResult<void>[]> {
+		const results = await Promise.allSettled([
+			this.summarize(issueId, config, langfuseService, traceId),
+			this.forwardWebhooks(issueId, config, langfuseService, traceId),
+		]);
+
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				logger.error(`Summarization failed for issue #${issueId}: ${toErrorMessage(result.reason)}`, { issueId, error: toErrorMessage(result.reason) });
+			}
+		}
+
+		return results;
+	}
+
+	private async finalizeTrace(langfuseService: LangfuseService | undefined, traceId: string, issueId: number, results: PromiseSettledResult<void>[]): Promise<void> {
+		try {
+			await langfuseService?.finalizeTrace({
+				traceId,
+				output: { success: results.every((r) => r.status === 'fulfilled') },
+			});
+		} catch (error) {
+			logger.error(`Failed to finalize Langfuse trace for issue #${issueId}: ${toErrorMessage(error)}`, { issueId, error: toErrorMessage(error) });
+		}
+	}
+
 	private async summarize(issueId: number, config: CloudflareConfig, langfuseService: LangfuseService | undefined, traceId: string): Promise<void> {
 		const openai = createOpenAI({
 			baseURL: config.openAiGateway,
@@ -109,10 +118,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		});
 
 		const repository = new RestIssueRepository();
-		const summarizeService = new AiSummarizeService(openai('gpt-5-mini'), langfuseService);
-		if (langfuseService) {
-			summarizeService.setTraceId(traceId);
-		}
+		const summarizeService = new AiSummarizeService(openai('gpt-5-mini'), langfuseService, langfuseService ? traceId : undefined);
 
 		const trackedRepository = langfuseService
 			? new SpanTrackedIssueRepository(repository, langfuseService, traceId)

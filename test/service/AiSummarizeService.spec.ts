@@ -281,8 +281,7 @@ describe('AiSummarizeService', () => {
 				link: '',
 			});
 
-			const service = new AiSummarizeService(mockModel, langfuseService);
-			service.setTraceId('external-trace-id');
+			const service = new AiSummarizeService(mockModel, langfuseService, 'external-trace-id');
 			await service.execute(issue);
 
 			expect(mockFetch).toHaveBeenCalledOnce();
@@ -332,8 +331,7 @@ describe('AiSummarizeService', () => {
 				link: '',
 			});
 
-			const service = new AiSummarizeService(mockModel, langfuseService);
-			service.setTraceId('external-trace');
+			const service = new AiSummarizeService(mockModel, langfuseService, 'external-trace');
 			const result = await service.execute(issue);
 
 			expect(result).toBe('Summary');

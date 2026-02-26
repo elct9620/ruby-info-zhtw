@@ -84,27 +84,7 @@ export class LangfuseService {
 					metadata: params.metadata,
 				},
 			},
-			{
-				id: crypto.randomUUID(),
-				timestamp: now,
-				type: 'generation-create',
-				body: {
-					id: params.generationId,
-					traceId: params.traceId,
-					name: 'llm-call',
-					model: params.model,
-					input: params.input,
-					output: params.output,
-					startTime: params.startTime.toISOString(),
-					endTime: params.endTime.toISOString(),
-					usage: params.usage
-						? {
-								input: params.usage.inputTokens,
-								output: params.usage.outputTokens,
-							}
-						: undefined,
-				},
-			},
+			this.buildGenerationEvent(params),
 		];
 
 		await this.ingest(batch);
@@ -114,32 +94,10 @@ export class LangfuseService {
 	 * Creates a generation event under an existing Trace in Langfuse.
 	 */
 	async createGeneration(params: CreateGenerationParams): Promise<void> {
-		const batch = [
-			{
-				id: crypto.randomUUID(),
-				timestamp: new Date().toISOString(),
-				type: 'generation-create',
-				body: {
-					id: params.generationId,
-					traceId: params.traceId,
-					name: 'llm-call',
-					model: params.model,
-					input: params.input,
-					output: params.output,
-					startTime: params.startTime.toISOString(),
-					endTime: params.endTime.toISOString(),
-					usage: params.usage
-						? {
-								input: params.usage.inputTokens,
-								output: params.usage.outputTokens,
-							}
-						: undefined,
-					metadata: params.metadata,
-				},
-			},
-		];
+		const event = this.buildGenerationEvent(params);
+		event.body.metadata = params.metadata;
 
-		await this.ingest(batch);
+		await this.ingest([event]);
 	}
 
 	/**
@@ -207,6 +165,31 @@ export class LangfuseService {
 		];
 
 		await this.ingest(batch);
+	}
+
+	private buildGenerationEvent(params: CreateGenerationParams) {
+		return {
+			id: crypto.randomUUID(),
+			timestamp: new Date().toISOString(),
+			type: 'generation-create' as const,
+			body: {
+				id: params.generationId,
+				traceId: params.traceId,
+				name: 'llm-call',
+				model: params.model,
+				input: params.input,
+				output: params.output,
+				startTime: params.startTime.toISOString(),
+				endTime: params.endTime.toISOString(),
+				usage: params.usage
+					? {
+							input: params.usage.inputTokens,
+							output: params.usage.outputTokens,
+						}
+					: undefined,
+				metadata: undefined as Record<string, unknown> | undefined,
+			},
+		};
 	}
 
 	private async ingest(batch: unknown[]): Promise<void> {

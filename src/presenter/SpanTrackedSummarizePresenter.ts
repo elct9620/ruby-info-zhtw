@@ -1,7 +1,7 @@
-import { IssueType } from '@/entity/Issue';
 import { Logger } from '@/service/Logger';
 import { LangfuseService } from '@/service/LangfuseService';
-import { SummarizePresenter } from '@/usecase/interface';
+import { SummarizePresenter, SummarizeResult } from '@/usecase/interface';
+import { toErrorMessage } from '@/util/toErrorMessage';
 
 const logger = new Logger('SpanTrackedSummarizePresenter');
 
@@ -15,25 +15,9 @@ export class SpanTrackedSummarizePresenter implements SummarizePresenter {
 		private readonly traceId: string,
 	) {}
 
-	setTitle(title: string): void {
-		this.presenter.setTitle(title);
-	}
-
-	setType(type: IssueType): void {
-		this.presenter.setType(type);
-	}
-
-	setLink(link: string): void {
-		this.presenter.setLink(link);
-	}
-
-	setDescription(description: string): void {
-		this.presenter.setDescription(description);
-	}
-
-	async render(): Promise<void> {
+	async render(result: SummarizeResult): Promise<void> {
 		const startTime = new Date();
-		await this.presenter.render();
+		await this.presenter.render(result);
 		const endTime = new Date();
 
 		try {
@@ -47,7 +31,7 @@ export class SpanTrackedSummarizePresenter implements SummarizePresenter {
 				output: { success: true },
 			});
 		} catch (error) {
-			logger.error('Failed to create discord-webhook span', { error: error instanceof Error ? error.message : String(error) });
+			logger.error('Failed to create discord-webhook span', { error: toErrorMessage(error) });
 		}
 	}
 }

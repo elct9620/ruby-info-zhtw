@@ -1,51 +1,25 @@
 import { UserAgent } from '@/constant';
 import { IssueType } from '@/entity/Issue';
 import { Logger } from '@/service/Logger';
-import { SummarizePresenter } from '@/usecase/interface';
+import { SummarizePresenter, SummarizeResult } from '@/usecase/interface';
 
 const logger = new Logger('DiscordSummarizePresenter');
 
 export class DiscordSummarizePresenter implements SummarizePresenter {
-	private title: string;
-	private link: string;
-	private description: string;
-	private type: IssueType;
+	constructor(private readonly webhookUrl: string) {}
 
-	constructor(private readonly webhookUrl: string) {
-		this.title = '';
-		this.link = '';
-		this.description = '';
-		this.type = IssueType.Unknown;
-	}
-
-	setTitle(title: string): void {
-		this.title = title;
-	}
-
-	setLink(link: string): void {
-		this.link = link;
-	}
-
-	setDescription(description: string): void {
-		this.description = description;
-	}
-
-	setType(type: IssueType): void {
-		this.type = type;
-	}
-
-	async render(): Promise<void> {
-		const { color, emoji } = this.getTypeProperties(this.type);
+	async render(result: SummarizeResult): Promise<void> {
+		const { color, emoji } = this.getTypeProperties(result.type);
 
 		const payload = {
 			embeds: [
 				{
-					title: `${emoji} ${this.title}`,
-					description: this.description.length > 3000 ? this.description.substring(0, 3000) + '...(內容過長，已截斷)' : this.description,
+					title: `${emoji} ${result.title}`,
+					description: result.description.length > 3000 ? result.description.substring(0, 3000) + '...(內容過長，已截斷)' : result.description,
 					color: color,
-					url: this.link,
+					url: result.link,
 					footer: {
-						text: `由 AI 自動歸納，僅供參考 | 類型: ${this.type}`,
+						text: `由 AI 自動歸納，僅供參考 | 類型: ${result.type}`,
 					},
 					timestamp: new Date().toISOString(),
 				},
@@ -65,7 +39,7 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 			logger.error('Failed to send to Discord', { statusCode: response.status, url: this.webhookUrl, body: await response.text() });
 		}
 	}
-	
+
 	/**
 	 * Get color and emoji based on issue type
 	 */

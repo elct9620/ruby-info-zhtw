@@ -2,6 +2,7 @@ import { Issue } from '@/entity/Issue';
 import { Logger } from '@/service/Logger';
 import { LangfuseService } from '@/service/LangfuseService';
 import { IssueRepository } from '@/usecase/interface';
+import { toErrorMessage } from '@/util/toErrorMessage';
 
 const logger = new Logger('SpanTrackedIssueRepository');
 
@@ -31,7 +32,7 @@ export class SpanTrackedIssueRepository implements IssueRepository {
 				output: { found: !!issue, subject: issue?.subject },
 			});
 		} catch (error) {
-			logger.error('Failed to create fetch-issue span', { error: error instanceof Error ? error.message : String(error) });
+			logger.error('Failed to create fetch-issue span', { error: toErrorMessage(error) });
 		}
 
 		return issue;

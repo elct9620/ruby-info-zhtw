@@ -8,10 +8,13 @@ export interface SummarizeService {
 	execute(issue: Issue): Promise<string>;
 }
 
+export interface SummarizeResult {
+	title: string;
+	type: IssueType;
+	link: string;
+	description: string;
+}
+
 export interface SummarizePresenter {
-	setTitle(title: string): void;
-	setType(type: IssueType): void;
-	setLink(link: string): void;
-	setDescription(description: string): void;
-	render(): Promise<void>;
+	render(result: SummarizeResult): Promise<void>;
 }

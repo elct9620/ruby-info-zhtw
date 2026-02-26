@@ -15,11 +15,11 @@ export class SummarizeUsecase {
 
 		const text = await this.summarizeService.execute(issue);
 
-		this.summarizePresenter.setTitle(issue.subject);
-		this.summarizePresenter.setDescription(text);
-		this.summarizePresenter.setLink(issue.link);
-		this.summarizePresenter.setType(issue.type);
-
-		await this.summarizePresenter.render();
+		await this.summarizePresenter.render({
+			title: issue.subject,
+			description: text,
+			link: issue.link,
+			type: issue.type,
+		});
 	}
 }

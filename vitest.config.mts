@@ -14,6 +14,9 @@ export default defineWorkersConfig({
 						'enable_nodejs_http_modules',
 						'enable_nodejs_perf_hooks_module',
 					],
+					bindings: {
+						SECRET_KEY_BASE: '01234567890123456789012345678901',
+					},
 				},
 			},
 		},

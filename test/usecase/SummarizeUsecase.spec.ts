@@ -17,16 +17,12 @@ describe('SummarizeUsecase', () => {
 			execute: vi.fn(),
 		};
 		mockPresenter = {
-			setTitle: vi.fn(),
-			setDescription: vi.fn(),
-			setLink: vi.fn(),
-			setType: vi.fn(),
 			render: vi.fn(),
 		};
 	});
 
 	describe('execute', () => {
-		it('fetches issue, generates summary, and sets presenter values', async () => {
+		it('fetches issue, generates summary, and renders result', async () => {
 			const issue = new Issue(12345, {
 				subject: 'Test Issue Subject',
 				description: 'Test description',
@@ -43,11 +39,12 @@ describe('SummarizeUsecase', () => {
 
 			expect(mockRepository.findById).toHaveBeenCalledWith(12345);
 			expect(mockService.execute).toHaveBeenCalledWith(issue);
-			expect(mockPresenter.setTitle).toHaveBeenCalledWith('Test Issue Subject');
-			expect(mockPresenter.setDescription).toHaveBeenCalledWith('Generated summary text');
-			expect(mockPresenter.setLink).toHaveBeenCalledWith('https://bugs.ruby-lang.org/issues/12345');
-			expect(mockPresenter.setType).toHaveBeenCalledWith(IssueType.Feature);
-			expect(mockPresenter.render).toHaveBeenCalledOnce();
+			expect(mockPresenter.render).toHaveBeenCalledWith({
+				title: 'Test Issue Subject',
+				description: 'Generated summary text',
+				link: 'https://bugs.ruby-lang.org/issues/12345',
+				type: IssueType.Feature,
+			});
 		});
 
 		it('throws error when issue is not found', async () => {
@@ -57,7 +54,6 @@ describe('SummarizeUsecase', () => {
 
 			await expect(usecase.execute(99999)).rejects.toThrow('Failed to fetch issue with ID: 99999');
 			expect(mockService.execute).not.toHaveBeenCalled();
-			expect(mockPresenter.setTitle).not.toHaveBeenCalled();
 			expect(mockPresenter.render).not.toHaveBeenCalled();
 		});
 
@@ -79,7 +75,9 @@ describe('SummarizeUsecase', () => {
 			await usecase.execute(12345);
 
 			expect(mockService.execute).toHaveBeenCalledWith(issue);
-			expect(mockPresenter.setType).toHaveBeenCalledWith(IssueType.Bug);
+			expect(mockPresenter.render).toHaveBeenCalledWith(
+				expect.objectContaining({ type: IssueType.Bug })
+			);
 		});
 
 		it('passes correct issue type to presenter for Misc type', async () => {
@@ -97,7 +95,9 @@ describe('SummarizeUsecase', () => {
 			const usecase = new SummarizeUsecase(mockRepository, mockService, mockPresenter);
 			await usecase.execute(12345);
 
-			expect(mockPresenter.setType).toHaveBeenCalledWith(IssueType.Misc);
+			expect(mockPresenter.render).toHaveBeenCalledWith(
+				expect.objectContaining({ type: IssueType.Misc })
+			);
 		});
 
 		it('passes correct issue type to presenter for Unknown type', async () => {
@@ -115,7 +115,9 @@ describe('SummarizeUsecase', () => {
 			const usecase = new SummarizeUsecase(mockRepository, mockService, mockPresenter);
 			await usecase.execute(12345);
 
-			expect(mockPresenter.setType).toHaveBeenCalledWith(IssueType.Unknown);
+			expect(mockPresenter.render).toHaveBeenCalledWith(
+				expect.objectContaining({ type: IssueType.Unknown })
+			);
 		});
 	});
 });

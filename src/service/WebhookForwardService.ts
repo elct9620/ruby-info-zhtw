@@ -1,3 +1,4 @@
+import { toErrorMessage } from '@/util/toErrorMessage';
 import { Logger } from './Logger';
 import { LangfuseService } from './LangfuseService';
 
@@ -36,8 +37,8 @@ export class WebhookForwardService {
 			logger.info(`Webhook forwarded successfully for issue #${issueId}`, { issueId, host: new URL(url).hostname });
 			await this.createSpan(url, startTime, { success: true });
 		} catch (error) {
-			logger.error(`Webhook forward failed for issue #${issueId}: ${error instanceof Error ? error.message : String(error)}`, { issueId, host: this.safeHostname(url), error: error instanceof Error ? error.message : String(error) });
-			await this.createSpan(url, startTime, { success: false, error: error instanceof Error ? error.message : String(error) });
+			logger.error(`Webhook forward failed for issue #${issueId}: ${toErrorMessage(error)}`, { issueId, host: this.safeHostname(url), error: toErrorMessage(error) });
+			await this.createSpan(url, startTime, { success: false, error: toErrorMessage(error) });
 		}
 	}
 
@@ -55,7 +56,7 @@ export class WebhookForwardService {
 				output,
 			});
 		} catch (error) {
-			logger.error('Failed to create webhook-forward span', { error: error instanceof Error ? error.message : String(error) });
+			logger.error('Failed to create webhook-forward span', { error: toErrorMessage(error) });
 		}
 	}
 

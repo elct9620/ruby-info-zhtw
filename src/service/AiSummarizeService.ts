@@ -4,25 +4,18 @@ import Mustache from 'mustache';
 import { Issue } from '@/entity/Issue';
 import promptTemplate from '@/prompts/summarize.md';
 import { SummarizeService } from '@/usecase/interface';
+import { toErrorMessage } from '@/util/toErrorMessage';
 import { LangfuseService } from './LangfuseService';
 import { Logger } from './Logger';
 
 const logger = new Logger('AiSummarizeService');
 
 export class AiSummarizeService implements SummarizeService {
-	private externalTraceId?: string;
-
 	constructor(
 		private readonly llmModel: LanguageModel,
-		private readonly langfuseService?: LangfuseService
+		private readonly langfuseService?: LangfuseService,
+		private readonly externalTraceId?: string,
 	) {}
-
-	/**
-	 * Sets an external trace ID to associate this service's generation with an existing Langfuse trace.
-	 */
-	setTraceId(traceId: string): void {
-		this.externalTraceId = traceId;
-	}
 
 	async execute(issue: Issue): Promise<string> {
 		const journals = issue.journals;
@@ -80,7 +73,7 @@ export class AiSummarizeService implements SummarizeService {
 					});
 				}
 			} catch (error) {
-				logger.error('Failed to send trace to Langfuse', { error: error instanceof Error ? error.message : String(error) });
+				logger.error('Failed to send trace to Langfuse', { error: toErrorMessage(error) });
 			}
 		}
 

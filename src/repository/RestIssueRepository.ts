@@ -2,6 +2,7 @@ import { Issue, IssueType } from '@/entity/Issue';
 import { Journal } from '@/entity/Journal';
 import { Logger } from '@/service/Logger';
 import { IssueRepository } from '@/usecase/interface';
+import { toErrorMessage } from '@/util/toErrorMessage';
 
 const logger = new Logger('RestIssueRepository');
 
@@ -55,7 +56,7 @@ export class RestIssueRepository implements IssueRepository {
 
 			return this.mapIssueResponse(issue);
 		} catch (error) {
-			logger.error(`Unexpected error fetching issue #${id} from Redmine: ${error instanceof Error ? error.message : String(error)}`, { issueId: id, error: error instanceof Error ? error.message : String(error) });
+			logger.error(`Unexpected error fetching issue #${id} from Redmine: ${toErrorMessage(error)}`, { issueId: id, error: toErrorMessage(error) });
 			return null;
 		}
 	}

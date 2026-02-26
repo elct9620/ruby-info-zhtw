@@ -2,7 +2,17 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SpanTrackedSummarizePresenter } from '@/presenter/SpanTrackedSummarizePresenter';
 import { LangfuseService } from '@/service/LangfuseService';
 import { IssueType } from '@/entity/Issue';
-import { SummarizePresenter } from '@/usecase/interface';
+import { SummarizePresenter, SummarizeResult } from '@/usecase/interface';
+
+function makeResult(overrides: Partial<SummarizeResult> = {}): SummarizeResult {
+	return {
+		title: 'Test',
+		description: 'Desc',
+		link: 'https://example.com',
+		type: IssueType.Unknown,
+		...overrides,
+	};
+}
 
 describe('SpanTrackedSummarizePresenter', () => {
 	let mockFetch: ReturnType<typeof vi.fn>;
@@ -17,47 +27,16 @@ describe('SpanTrackedSummarizePresenter', () => {
 		});
 		langfuseService = new LangfuseService('pub-key', 'sec-key');
 		innerPresenter = {
-			setTitle: vi.fn(),
-			setType: vi.fn(),
-			setLink: vi.fn(),
-			setDescription: vi.fn(),
 			render: vi.fn(),
 		};
 	});
 
-	it('delegates setTitle to inner presenter', () => {
-		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-1');
-		tracked.setTitle('Test Title');
-
-		expect(innerPresenter.setTitle).toHaveBeenCalledWith('Test Title');
-	});
-
-	it('delegates setType to inner presenter', () => {
-		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-1');
-		tracked.setType(IssueType.Bug);
-
-		expect(innerPresenter.setType).toHaveBeenCalledWith(IssueType.Bug);
-	});
-
-	it('delegates setLink to inner presenter', () => {
-		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-1');
-		tracked.setLink('https://example.com');
-
-		expect(innerPresenter.setLink).toHaveBeenCalledWith('https://example.com');
-	});
-
-	it('delegates setDescription to inner presenter', () => {
-		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-1');
-		tracked.setDescription('Test Description');
-
-		expect(innerPresenter.setDescription).toHaveBeenCalledWith('Test Description');
-	});
-
 	it('delegates render to inner presenter and creates span', async () => {
 		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-abc');
-		await tracked.render();
+		const result = makeResult();
+		await tracked.render(result);
 
-		expect(innerPresenter.render).toHaveBeenCalledOnce();
+		expect(innerPresenter.render).toHaveBeenCalledWith(result);
 		expect(mockFetch).toHaveBeenCalledOnce();
 		const body = JSON.parse(mockFetch.mock.calls[0][1].body);
 		expect(body.batch).toHaveLength(1);
@@ -70,7 +49,7 @@ describe('SpanTrackedSummarizePresenter', () => {
 
 	it('includes startTime and endTime in span', async () => {
 		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-1');
-		await tracked.render();
+		await tracked.render(makeResult());
 
 		const body = JSON.parse(mockFetch.mock.calls[0][1].body);
 		expect(body.batch[0].body.startTime).toBeDefined();
@@ -83,7 +62,7 @@ describe('SpanTrackedSummarizePresenter', () => {
 
 		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-1');
-		await tracked.render();
+		await tracked.render(makeResult());
 
 		expect(innerPresenter.render).toHaveBeenCalledOnce();
 		expect(consoleSpy).toHaveBeenCalled();
