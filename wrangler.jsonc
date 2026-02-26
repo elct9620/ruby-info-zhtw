@@ -60,7 +60,8 @@
 		"DISCORD_ALLOW_GUILD_ID": "1245197991191642262",
 		"DISCORD_ALLOW_ROLE_ID": "1367854918874173576",
 		"LANGFUSE_BASE_URL": "https://us.cloud.langfuse.com",
-		"DEBOUNCE_DELAY": "300"
+		"DEBOUNCE_DELAY": "300",
+		"WEBHOOK_FORWARD_URLS": ""
 	},
 	/**
 	 * Note: Use secrets to store sensitive data.

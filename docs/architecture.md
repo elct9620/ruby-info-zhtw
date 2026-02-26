@@ -55,7 +55,8 @@ This project follows Clean Architecture principles with clear separation of conc
 │   ├── DiscordRoleAccessService.ts  # Discord role verification
 │   ├── EmailDispatcher.ts      # Email routing logic
 │   ├── LangfuseService.ts      # Langfuse tracing (Trace, Span, Generation)
-│   └── SessionCipher.ts        # Session encryption
+│   ├── SessionCipher.ts        # Session encryption
+│   └── WebhookForwardService.ts # Webhook forwarding (FailSafe via Promise.allSettled)
 │
 ├── usecase/                    # Business logic
 │   ├── interface.ts            # Dependency injection interfaces
@@ -83,7 +84,11 @@ Email Event
     │             ├─→ LangfuseService.createTrace (email-summarize)
     │             ├─→ Wire decorators (SpanTracked*) when Langfuse enabled
     │             │
-    │             └─→ SummarizeUsecase
+    │             ├─→ Promise.allSettled (parallel execution)
+    │             │   ├─→ WebhookForwardService → POST {issue_id} to configured URLs
+    │             │   │   └─→ Langfuse webhook-forward span (host only, token redacted)
+    │             │   │
+    │             │   └─→ SummarizeUsecase
     │                  ├─→ SpanTrackedIssueRepository (fetch-issue span)
     │                  │   └─→ RestIssueRepository → bugs.ruby-lang.org API
     │                  │       └─→ Issue (domain model)
@@ -124,6 +129,7 @@ Configuration
 | Decorator | Cross-cutting concerns | `SpanTrackedIssueRepository` and `SpanTrackedSummarizePresenter` wrap ports with Langfuse span tracing |
 | Composition Root | Dependency wiring | `IssueDebounceObject.summarize()` assembles all dependencies and decorators |
 | Debounce | Email coalescing | `IssueDebounceObject` merges rapid emails via Durable Object alarm |
+| FailSafe | Webhook forwarding | `WebhookForwardService` uses `Promise.allSettled` so one failure doesn't affect others |
 
 ## Interface Definitions
 

@@ -66,6 +66,12 @@ export class CloudflareConfig {
 		return this.env.LANGFUSE_BASE_URL || 'https://cloud.langfuse.com';
 	}
 
+	get webhookForwardUrls(): string[] {
+		const raw = this.env.WEBHOOK_FORWARD_URLS || '';
+		if (!raw.trim()) return [];
+		return raw.split(',').map((url) => url.trim()).filter(Boolean);
+	}
+
 	get debounceDelay(): number {
 		const seconds = parseInt(this.env.DEBOUNCE_DELAY || '300', 10);
 		return seconds * 1000;

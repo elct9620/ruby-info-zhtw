@@ -15,6 +15,7 @@ type MockEnv = Pick<
 	| 'LANGFUSE_SECRET_KEY'
 	| 'LANGFUSE_PUBLIC_KEY'
 	| 'LANGFUSE_BASE_URL'
+	| 'WEBHOOK_FORWARD_URLS'
 >;
 
 describe('CloudflareConfig', () => {
@@ -179,6 +180,43 @@ describe('CloudflareConfig', () => {
 			const config = new CloudflareConfig(env);
 
 			expect(config.debounceDelay).toBe(0);
+		});
+	});
+
+	describe('webhookForwardUrls', () => {
+		it('returns empty array when WEBHOOK_FORWARD_URLS is empty', () => {
+			const env = createMockEnv({ WEBHOOK_FORWARD_URLS: '' });
+			const config = new CloudflareConfig(env);
+
+			expect(config.webhookForwardUrls).toEqual([]);
+		});
+
+		it('returns single URL', () => {
+			const env = createMockEnv({ WEBHOOK_FORWARD_URLS: 'https://example.com/webhook' });
+			const config = new CloudflareConfig(env);
+
+			expect(config.webhookForwardUrls).toEqual(['https://example.com/webhook']);
+		});
+
+		it('returns multiple URLs split by comma', () => {
+			const env = createMockEnv({ WEBHOOK_FORWARD_URLS: 'https://a.com/hook,https://b.com/hook' });
+			const config = new CloudflareConfig(env);
+
+			expect(config.webhookForwardUrls).toEqual(['https://a.com/hook', 'https://b.com/hook']);
+		});
+
+		it('trims whitespace around URLs', () => {
+			const env = createMockEnv({ WEBHOOK_FORWARD_URLS: ' https://a.com/hook , https://b.com/hook ' });
+			const config = new CloudflareConfig(env);
+
+			expect(config.webhookForwardUrls).toEqual(['https://a.com/hook', 'https://b.com/hook']);
+		});
+
+		it('ignores trailing comma', () => {
+			const env = createMockEnv({ WEBHOOK_FORWARD_URLS: 'https://a.com/hook,' });
+			const config = new CloudflareConfig(env);
+
+			expect(config.webhookForwardUrls).toEqual(['https://a.com/hook']);
 		});
 	});
 
