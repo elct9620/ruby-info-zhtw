@@ -12,7 +12,7 @@
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.16.18",
-		"@vitest/coverage-istanbul": "~4.1.2",
+		"@vitest/coverage-istanbul": "~4.1.9",
 		"prettier": "^3.8.2",
 		"prettier-plugin-organize-imports": "^4.1.0",
 		"typescript": "^6.0.3",
