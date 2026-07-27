@@ -1,9 +1,9 @@
-import { SELF } from 'cloudflare:test';
+import { exports } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 
 describe('AuthController', () => {
 	it('redirects to Discord OAuth when accessing /auth/discord', async () => {
-		const response = await SELF.fetch('https://example.com/auth/discord', {
+		const response = await exports.default.fetch('https://example.com/auth/discord', {
 			redirect: 'manual',
 		});
 

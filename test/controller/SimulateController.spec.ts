@@ -1,4 +1,4 @@
-import { SELF, env } from 'cloudflare:test';
+import { env, exports } from 'cloudflare:workers';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { SessionCookieName } from '@/constant';
@@ -10,14 +10,14 @@ describe('SimulateController', () => {
 	});
 
 	it('returns 401 when no session cookie is present', async () => {
-		const response = await SELF.fetch('https://example.com/simulate');
+		const response = await exports.default.fetch('https://example.com/simulate');
 
 		expect(response.status).toBe(401);
 		expect(await response.text()).toBe('Unauthorized');
 	});
 
 	it('returns 401 when session cookie is invalid', async () => {
-		const response = await SELF.fetch('https://example.com/simulate', {
+		const response = await exports.default.fetch('https://example.com/simulate', {
 			headers: {
 				Cookie: `${SessionCookieName}=invalid-cookie-value`,
 			},
@@ -34,7 +34,7 @@ describe('SimulateController', () => {
 			expiredAt: Date.now() + 86400000,
 		});
 
-		const response = await SELF.fetch('https://example.com/simulate', {
+		const response = await exports.default.fetch('https://example.com/simulate', {
 			headers: {
 				Cookie: `${SessionCookieName}=${session}`,
 			},
