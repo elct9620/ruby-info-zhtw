@@ -8,6 +8,7 @@
 		"start": "wrangler dev",
 		"test": "vitest",
 		"test:coverage": "vitest run --coverage",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json",
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
