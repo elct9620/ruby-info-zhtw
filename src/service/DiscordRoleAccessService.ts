@@ -25,7 +25,10 @@ export class DiscordRoleAccessService {
 			});
 
 			if (!memberResponse.ok) {
-				logger.error(`Discord API returned HTTP ${memberResponse.status} when fetching member roles`, { statusCode: memberResponse.status, error: await memberResponse.text() });
+				logger.error(`Discord API returned HTTP ${memberResponse.status} when fetching member roles`, {
+					statusCode: memberResponse.status,
+					error: await memberResponse.text(),
+				});
 				return false;
 			}
 

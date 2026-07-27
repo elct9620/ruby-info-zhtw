@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { DiscordRoleAccessService } from '@/service/DiscordRoleAccessService';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('DiscordRoleAccessService', () => {
 	const originalFetch = global.fetch;
@@ -169,10 +169,7 @@ describe('DiscordRoleAccessService', () => {
 				const service = new DiscordRoleAccessService(guildId, roleId);
 				await service.isAllowed('test-token', 'user-id');
 
-				expect(global.fetch).toHaveBeenCalledWith(
-					`https://discord.com/api/v10/users/@me/guilds/${guildId}/member`,
-					expect.any(Object)
-				);
+				expect(global.fetch).toHaveBeenCalledWith(`https://discord.com/api/v10/users/@me/guilds/${guildId}/member`, expect.any(Object));
 			});
 
 			it('sends correct authorization header', async () => {
@@ -190,7 +187,7 @@ describe('DiscordRoleAccessService', () => {
 						headers: expect.objectContaining({
 							Authorization: 'Bearer my-bearer-token',
 						}),
-					})
+					}),
 				);
 			});
 
@@ -209,7 +206,7 @@ describe('DiscordRoleAccessService', () => {
 						headers: expect.objectContaining({
 							'Content-Type': 'application/json',
 						}),
-					})
+					}),
 				);
 			});
 		});
@@ -225,10 +222,7 @@ describe('DiscordRoleAccessService', () => {
 				const service = new DiscordRoleAccessService(customGuildId, roleId);
 				await service.isAllowed('token', 'user');
 
-				expect(global.fetch).toHaveBeenCalledWith(
-					expect.stringContaining(customGuildId),
-					expect.any(Object)
-				);
+				expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining(customGuildId), expect.any(Object));
 			});
 
 			it('checks for configured role ID', async () => {

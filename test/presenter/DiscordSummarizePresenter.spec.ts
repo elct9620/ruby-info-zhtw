@@ -1,8 +1,8 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
-import { IssueType } from '@/entity/Issue';
 import { UserAgent } from '@/constant';
+import { IssueType } from '@/entity/Issue';
+import { DiscordSummarizePresenter } from '@/presenter/DiscordSummarizePresenter';
 import { SummarizeResult } from '@/usecase/interface';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 function makeResult(overrides: Partial<SummarizeResult> = {}): SummarizeResult {
 	return {
@@ -32,10 +32,14 @@ describe('DiscordSummarizePresenter', () => {
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
 
-			await expect(presenter.render(makeResult({
-				title: 'Test',
-				description: 'Test Description',
-			}))).resolves.toBeUndefined();
+			await expect(
+				presenter.render(
+					makeResult({
+						title: 'Test',
+						description: 'Test Description',
+					}),
+				),
+			).resolves.toBeUndefined();
 		});
 
 		it('does not throw when webhook responds with non-200', async () => {
@@ -48,10 +52,14 @@ describe('DiscordSummarizePresenter', () => {
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
 
-			await expect(presenter.render(makeResult({
-				title: 'Test',
-				description: 'Test Description',
-			}))).resolves.toBeUndefined();
+			await expect(
+				presenter.render(
+					makeResult({
+						title: 'Test',
+						description: 'Test Description',
+					}),
+				),
+			).resolves.toBeUndefined();
 		});
 
 		it('cancels response body on successful webhook response', async () => {
@@ -78,7 +86,7 @@ describe('DiscordSummarizePresenter', () => {
 						'Content-Type': 'application/json',
 						'User-Agent': UserAgent,
 					},
-				})
+				}),
 			);
 		});
 
@@ -86,12 +94,14 @@ describe('DiscordSummarizePresenter', () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
 
 			const presenter = new DiscordSummarizePresenter('https://discord.webhook');
-			await presenter.render(makeResult({
-				title: 'Issue Title',
-				description: 'Issue Summary',
-				link: 'https://bugs.ruby-lang.org/issues/123',
-				type: IssueType.Bug,
-			}));
+			await presenter.render(
+				makeResult({
+					title: 'Issue Title',
+					description: 'Issue Summary',
+					link: 'https://bugs.ruby-lang.org/issues/123',
+					type: IssueType.Bug,
+				}),
+			);
 
 			const callArgs = vi.mocked(global.fetch).mock.calls[0];
 			const body = JSON.parse(callArgs[1]?.body as string);

@@ -18,18 +18,18 @@ Location: `src/controller/AuthController.ts`
 
 ```typescript
 discordAuth({
-  client_id: config.discordClientId,
-  client_secret: config.discordClientSecret,
-  scope: ['identify', 'guilds.members.read'],
-})
+	client_id: config.discordClientId,
+	client_secret: config.discordClientSecret,
+	scope: ['identify', 'guilds.members.read'],
+});
 ```
 
 ### Scopes
 
-| Scope | Purpose |
-|-------|---------|
-| `identify` | Read user basic info (ID, username, global_name) |
-| `guilds.members.read` | Read user's guild membership info |
+| Scope                 | Purpose                                          |
+| --------------------- | ------------------------------------------------ |
+| `identify`            | Read user basic info (ID, username, global_name) |
+| `guilds.members.read` | Read user's guild membership info                |
 
 ### Flow Steps
 
@@ -77,11 +77,11 @@ Location: `src/service/DiscordRoleAccessService.ts`
 
 ```typescript
 export class DiscordRoleAccessService {
-  constructor(
-    private readonly guildId: string,
-    private readonly roleId: string,
-  ) {}
-  async isAllowed(token?: string, userId?: string): Promise<boolean>
+	constructor(
+		private readonly guildId: string,
+		private readonly roleId: string,
+	) {}
+	async isAllowed(token?: string, userId?: string): Promise<boolean>;
 }
 ```
 
@@ -90,12 +90,14 @@ export class DiscordRoleAccessService {
 **Endpoint**: `GET https://discord.com/api/v10/users/@me/guilds/{guildId}/member`
 
 **Headers**:
+
 ```
 Authorization: Bearer {token}
 Content-Type: application/json
 ```
 
 **Response**:
+
 ```json
 {
   "roles": ["role_id_1", "role_id_2", ...]
@@ -111,15 +113,15 @@ Content-Type: application/json
 
 ### Error Cases
 
-| Condition | Result |
-|-----------|--------|
-| Missing token | `false` |
-| Missing userId | `false` |
-| API returns 401 | `false` |
-| API returns 403 | `false` |
-| API returns 404 | `false` (user not in guild) |
-| Network error | `false` |
-| Role not in list | `false` |
+| Condition        | Result                      |
+| ---------------- | --------------------------- |
+| Missing token    | `false`                     |
+| Missing userId   | `false`                     |
+| API returns 401  | `false`                     |
+| API returns 403  | `false`                     |
+| API returns 404  | `false` (user not in guild) |
+| Network error    | `false`                     |
+| Role not in list | `false`                     |
 
 ## Session Management
 
@@ -131,8 +133,8 @@ Location: `src/service/SessionCipher.ts`
 
 ```typescript
 type Session = {
-  displayName: string;  // User's Discord display name
-  expiredAt: number;    // Expiration timestamp (milliseconds)
+	displayName: string; // User's Discord display name
+	expiredAt: number; // Expiration timestamp (milliseconds)
 };
 ```
 
@@ -141,6 +143,7 @@ type Session = {
 **Algorithm**: AES-CBC (256-bit key recommended)
 
 **Process**:
+
 ```
 Session object (JSON)
     │
@@ -182,9 +185,9 @@ Session object (with validation)
 
 ```typescript
 setCookie(c, SessionCookieName, session, {
-  httpOnly: true,   // Prevent JavaScript access
-  sameSite: 'Lax',  // CSRF protection
-  secure: true,     // HTTPS only
+	httpOnly: true, // Prevent JavaScript access
+	sameSite: 'Lax', // CSRF protection
+	secure: true, // HTTPS only
 });
 ```
 
@@ -194,7 +197,7 @@ Location: `src/constant.ts`
 
 ```typescript
 export const SessionCookieName = '_rib_session';
-export const SessionDurationMs = 24 * 60 * 60 * 1000;  // 24 hours
+export const SessionDurationMs = 24 * 60 * 60 * 1000; // 24 hours
 ```
 
 ## Protected Routes
@@ -207,19 +210,19 @@ Location: `src/controller/SimulateController.ts`
 
 ```typescript
 const authMiddleware = createMiddleware(async (c, next) => {
-  const sessionCookie = getCookie(c, SessionCookieName);
-  if (!sessionCookie) {
-    return c.text('Unauthorized', 401);
-  }
+	const sessionCookie = getCookie(c, SessionCookieName);
+	if (!sessionCookie) {
+		return c.text('Unauthorized', 401);
+	}
 
-  const cipher = new SessionCipher(config.secretKeyBase);
-  const session = await cipher.decrypt(sessionCookie);
-  if (!session) {
-    return c.text('Unauthorized', 401);
-  }
+	const cipher = new SessionCipher(config.secretKeyBase);
+	const session = await cipher.decrypt(sessionCookie);
+	if (!session) {
+		return c.text('Unauthorized', 401);
+	}
 
-  c.set('session', session);
-  await next();
+	c.set('session', session);
+	await next();
 });
 ```
 
@@ -247,13 +250,13 @@ Execute route handler
 
 ## Security Considerations
 
-| Aspect | Implementation |
-|--------|----------------|
-| XSS Prevention | HttpOnly cookie |
-| CSRF Prevention | SameSite=Lax |
+| Aspect             | Implementation     |
+| ------------------ | ------------------ |
+| XSS Prevention     | HttpOnly cookie    |
+| CSRF Prevention    | SameSite=Lax       |
 | Transport Security | Secure cookie flag |
-| Session Data | AES-CBC encryption |
-| Key Storage | Cloudflare Secrets |
+| Session Data       | AES-CBC encryption |
+| Key Storage        | Cloudflare Secrets |
 
 ### Potential Improvements
 

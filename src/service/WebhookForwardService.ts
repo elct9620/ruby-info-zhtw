@@ -1,6 +1,6 @@
 import { toErrorMessage } from '@/util/toErrorMessage';
-import { Logger } from './Logger';
 import { LangfuseService } from './LangfuseService';
+import { Logger } from './Logger';
 
 const logger = new Logger('WebhookForwardService');
 
@@ -8,15 +8,13 @@ export class WebhookForwardService {
 	constructor(
 		private readonly urls: string[],
 		private readonly langfuseService?: LangfuseService,
-		private readonly traceId?: string
+		private readonly traceId?: string,
 	) {}
 
 	async execute(issueId: number): Promise<void> {
 		if (this.urls.length === 0) return;
 
-		await Promise.allSettled(
-			this.urls.map((url) => this.forward(url, issueId))
-		);
+		await Promise.allSettled(this.urls.map((url) => this.forward(url, issueId)));
 	}
 
 	private async forward(url: string, issueId: number): Promise<void> {
@@ -31,7 +29,11 @@ export class WebhookForwardService {
 			await response.body?.cancel();
 
 			if (!response.ok) {
-				logger.error(`Webhook forward failed for issue #${issueId}: HTTP ${response.status}`, { issueId, host: new URL(url).hostname, status: response.status });
+				logger.error(`Webhook forward failed for issue #${issueId}: HTTP ${response.status}`, {
+					issueId,
+					host: new URL(url).hostname,
+					status: response.status,
+				});
 				await this.createSpan(url, startTime, { success: false, status: response.status });
 				return;
 			}
@@ -39,7 +41,11 @@ export class WebhookForwardService {
 			logger.info(`Webhook forwarded successfully for issue #${issueId}`, { issueId, host: new URL(url).hostname });
 			await this.createSpan(url, startTime, { success: true });
 		} catch (error) {
-			logger.error(`Webhook forward failed for issue #${issueId}: ${toErrorMessage(error)}`, { issueId, host: this.safeHostname(url), error: toErrorMessage(error) });
+			logger.error(`Webhook forward failed for issue #${issueId}: ${toErrorMessage(error)}`, {
+				issueId,
+				host: this.safeHostname(url),
+				error: toErrorMessage(error),
+			});
 			await this.createSpan(url, startTime, { success: false, error: toErrorMessage(error) });
 		}
 	}

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { CloudflareConfig } from '@/config';
+import { describe, expect, it } from 'vitest';
 
 type MockEnv = Pick<
 	Cloudflare.Env,

@@ -1,8 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { Issue } from '@/entity/Issue';
 import { SpanTrackedIssueRepository } from '@/repository/SpanTrackedIssueRepository';
 import { LangfuseService } from '@/service/LangfuseService';
-import { Issue } from '@/entity/Issue';
 import { IssueRepository } from '@/usecase/interface';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('SpanTrackedIssueRepository', () => {
 	let mockFetch: ReturnType<typeof vi.fn>;

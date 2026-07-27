@@ -1,6 +1,6 @@
 import { Issue } from '@/entity/Issue';
-import { Logger } from '@/service/Logger';
 import { LangfuseService } from '@/service/LangfuseService';
+import { Logger } from '@/service/Logger';
 import { IssueRepository } from '@/usecase/interface';
 import { toErrorMessage } from '@/util/toErrorMessage';
 
@@ -13,7 +13,7 @@ export class SpanTrackedIssueRepository implements IssueRepository {
 	constructor(
 		private readonly repository: IssueRepository,
 		private readonly langfuseService: LangfuseService,
-		private readonly traceId: string
+		private readonly traceId: string,
 	) {}
 
 	async findById(id: number): Promise<Issue | null> {

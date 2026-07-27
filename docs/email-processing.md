@@ -14,9 +14,9 @@ Location: `src/service/EmailDispatcher.ts`
 
 ```typescript
 enum EmailDispatchType {
-  Summarize = 'summarize',
-  ForwardAdmin = 'forward_admin',
-  Reject = 'reject',
+	Summarize = 'summarize',
+	ForwardAdmin = 'forward_admin',
+	Reject = 'reject',
 }
 ```
 
@@ -94,13 +94,13 @@ Rejects the email with a message. Currently not used in the routing logic.
 
 ## Error Handling
 
-| Stage | Error | Handling |
-|-------|-------|----------|
-| Postal MIME parsing | Exception | Email not processed |
-| Sender validation | Unauthorized domain | ForwardAdmin |
-| Issue link extraction | No link found | ForwardAdmin |
-| Issue fetch | API error or 404 | Log error, return null |
-| AI summarization | OpenAI API error | Exception caught, logged |
-| Discord send | Webhook error | Log status and response |
+| Stage                 | Error               | Handling                 |
+| --------------------- | ------------------- | ------------------------ |
+| Postal MIME parsing   | Exception           | Email not processed      |
+| Sender validation     | Unauthorized domain | ForwardAdmin             |
+| Issue link extraction | No link found       | ForwardAdmin             |
+| Issue fetch           | API error or 404    | Log error, return null   |
+| AI summarization      | OpenAI API error    | Exception caught, logged |
+| Discord send          | Webhook error       | Log status and response  |
 
 Errors during summarization do not cause the email to be forwarded or rejected - they are simply logged.

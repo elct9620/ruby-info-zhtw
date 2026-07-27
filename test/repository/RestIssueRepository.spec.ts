@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { RestIssueRepository } from '@/repository/RestIssueRepository';
 import { IssueType } from '@/entity/Issue';
+import { RestIssueRepository } from '@/repository/RestIssueRepository';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('RestIssueRepository', () => {
 	const originalFetch = global.fetch;

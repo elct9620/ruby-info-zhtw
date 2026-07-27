@@ -18,21 +18,21 @@
 	"placement": { "mode": "smart" },
 
 	"send_email": [
-    {
-      "name": "core@ruby.aotoki.cloud"
-    }
-  ],
-  "rules": [
+		{
+			"name": "core@ruby.aotoki.cloud",
+		},
+	],
+	"rules": [
 		{
 			"type": "Text",
 			"globs": ["**/*.md"],
-			"fallthrough": true
+			"fallthrough": true,
 		},
 		{
 			"type": "Text",
 			"globs": ["**/*.txt"],
-			"fallthrough": true
-		}
+			"fallthrough": true,
+		},
 	],
 
 	/**
@@ -47,20 +47,18 @@
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
 	"durable_objects": {
-		"bindings": [
-			{ "name": "ISSUE_DEBOUNCE", "class_name": "IssueDebounceObject" }
-		]
+		"bindings": [{ "name": "ISSUE_DEBOUNCE", "class_name": "IssueDebounceObject" }],
 	},
 	"migrations": [
 		{ "tag": "v1", "new_classes": ["IssueDebounceObject"] },
 		{ "tag": "v2", "deleted_classes": ["IssueDebounceObject"] },
-		{ "tag": "v3", "new_sqlite_classes": ["IssueDebounceObject"] }
+		{ "tag": "v3", "new_sqlite_classes": ["IssueDebounceObject"] },
 	],
 	"vars": {
 		"DISCORD_ALLOW_GUILD_ID": "1245197991191642262",
 		"DISCORD_ALLOW_ROLE_ID": "1367854918874173576",
 		"LANGFUSE_BASE_URL": "https://us.cloud.langfuse.com",
-		"DEBOUNCE_DELAY": "300"
+		"DEBOUNCE_DELAY": "300",
 	},
 	/**
 	 * Note: Use secrets to store sensitive data.

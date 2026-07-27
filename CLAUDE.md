@@ -28,6 +28,7 @@ Controller → UseCase → Service/Repository → Entity
 ```
 
 **Layers:**
+
 - `controller/` - HTTP routes and email handler adapter
 - `usecase/` - Business logic orchestration, interfaces in `interface.ts`
 - `service/` - AI summarization, email dispatch, session encryption, Langfuse tracing

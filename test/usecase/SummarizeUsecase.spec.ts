@@ -1,8 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { SummarizeUsecase } from '@/usecase/SummarizeUsecase';
-import { IssueRepository, SummarizeService, SummarizePresenter } from '@/usecase/interface';
 import { Issue, IssueType } from '@/entity/Issue';
 import { Journal } from '@/entity/Journal';
+import { SummarizeUsecase } from '@/usecase/SummarizeUsecase';
+import { IssueRepository, SummarizePresenter, SummarizeService } from '@/usecase/interface';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('SummarizeUsecase', () => {
 	let mockRepository: IssueRepository;
@@ -75,9 +75,7 @@ describe('SummarizeUsecase', () => {
 			await usecase.execute(12345);
 
 			expect(mockService.execute).toHaveBeenCalledWith(issue);
-			expect(mockPresenter.render).toHaveBeenCalledWith(
-				expect.objectContaining({ type: IssueType.Bug })
-			);
+			expect(mockPresenter.render).toHaveBeenCalledWith(expect.objectContaining({ type: IssueType.Bug }));
 		});
 
 		it('passes correct issue type to presenter for Misc type', async () => {
@@ -95,9 +93,7 @@ describe('SummarizeUsecase', () => {
 			const usecase = new SummarizeUsecase(mockRepository, mockService, mockPresenter);
 			await usecase.execute(12345);
 
-			expect(mockPresenter.render).toHaveBeenCalledWith(
-				expect.objectContaining({ type: IssueType.Misc })
-			);
+			expect(mockPresenter.render).toHaveBeenCalledWith(expect.objectContaining({ type: IssueType.Misc }));
 		});
 
 		it('passes correct issue type to presenter for Unknown type', async () => {
@@ -115,9 +111,7 @@ describe('SummarizeUsecase', () => {
 			const usecase = new SummarizeUsecase(mockRepository, mockService, mockPresenter);
 			await usecase.execute(12345);
 
-			expect(mockPresenter.render).toHaveBeenCalledWith(
-				expect.objectContaining({ type: IssueType.Unknown })
-			);
+			expect(mockPresenter.render).toHaveBeenCalledWith(expect.objectContaining({ type: IssueType.Unknown }));
 		});
 	});
 });

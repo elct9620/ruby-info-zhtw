@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Logger } from '@/service/Logger';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('Logger', () => {
 	beforeEach(() => {
@@ -79,8 +79,6 @@ describe('Logger', () => {
 
 		logger.error('something failed');
 
-		expect(spy).toHaveBeenCalledWith(
-			expect.objectContaining({ component: 'MyService' }),
-		);
+		expect(spy).toHaveBeenCalledWith(expect.objectContaining({ component: 'MyService' }));
 	});
 });

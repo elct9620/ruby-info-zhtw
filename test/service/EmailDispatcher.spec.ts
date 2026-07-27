@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EmailDispatcher, EmailDispatchType } from '@/service/EmailDispatcher';
 import { Logger } from '@/service/Logger';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function createMockEmail(from: string, body: string): ArrayBuffer {
 	const email = `From: ${from}
@@ -115,7 +115,7 @@ describe('EmailDispatcher', () => {
 				const dispatcher = new EmailDispatcher(adminEmail, logger);
 				const raw = createMockEmail(
 					'user@frost.tw',
-					'First: https://bugs.ruby-lang.org/issues/111 Second: https://bugs.ruby-lang.org/issues/222'
+					'First: https://bugs.ruby-lang.org/issues/111 Second: https://bugs.ruby-lang.org/issues/222',
 				);
 
 				const result = await dispatcher.execute(raw);

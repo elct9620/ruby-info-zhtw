@@ -14,19 +14,19 @@ Location: `src/service/AiSummarizeService.ts`
 
 ```typescript
 export class AiSummarizeService implements SummarizeService {
-  constructor(private readonly llmModel: LanguageModel) {}
-  async execute(issue: Issue): Promise<string>
+	constructor(private readonly llmModel: LanguageModel) {}
+	async execute(issue: Issue): Promise<string>;
 }
 ```
 
 ### Configuration
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| Model | `gpt-5-mini` | OpenAI lightweight model |
-| Temperature | `1` | Balanced creativity |
-| Framework | Vercel AI SDK | Unified AI calling interface |
-| Gateway | Optional | Cloudflare AI Gateway proxy |
+| Parameter   | Value         | Description                  |
+| ----------- | ------------- | ---------------------------- |
+| Model       | `gpt-5-mini`  | OpenAI lightweight model     |
+| Temperature | `1`           | Balanced creativity          |
+| Framework   | Vercel AI SDK | Unified AI calling interface |
+| Gateway     | Optional      | Cloudflare AI Gateway proxy  |
 
 ## Prompt Template
 
@@ -89,32 +89,32 @@ Location: `src/entity/Issue.ts`
 
 ```typescript
 export enum IssueType {
-  Feature = 'Feature',
-  Bug = 'Bug',
-  Misc = 'Misc',
-  Unknown = 'Unknown',
+	Feature = 'Feature',
+	Bug = 'Bug',
+	Misc = 'Misc',
+	Unknown = 'Unknown',
 }
 
 export class Issue {
-  id: number
-  subject: string
-  type: IssueType
-  description: string
-  authorName: string
-  assigneeName: string | null
-  link: string
-  journals: Journal[]
+	id: number;
+	subject: string;
+	type: IssueType;
+	description: string;
+	authorName: string;
+	assigneeName: string | null;
+	link: string;
+	journals: Journal[];
 }
 ```
 
 ### Tracker to Type Mapping
 
 | Tracker Name | IssueType |
-|--------------|-----------|
-| `feature` | Feature |
-| `bug` | Bug |
-| `misc` | Misc |
-| Other | Unknown |
+| ------------ | --------- |
+| `feature`    | Feature   |
+| `bug`        | Bug       |
+| `misc`       | Misc      |
+| Other        | Unknown   |
 
 ## Output Formatting
 
@@ -128,16 +128,18 @@ Implements builder pattern for constructing Discord Embed messages.
 
 ```json
 {
-  "embeds": [{
-    "title": "{emoji} {subject}",
-    "description": "{ai_summary}",
-    "color": 0x2ecc71,
-    "url": "https://bugs.ruby-lang.org/issues/{id}",
-    "footer": {
-      "text": "由 AI 自動歸納，僅供參考 | 類型: {type}"
-    },
-    "timestamp": "2025-02-04T..."
-  }]
+	"embeds": [
+		{
+			"title": "{emoji} {subject}",
+			"description": "{ai_summary}",
+			"color": 0x2ecc71,
+			"url": "https://bugs.ruby-lang.org/issues/{id}",
+			"footer": {
+				"text": "由 AI 自動歸納，僅供參考 | 類型: {type}"
+			},
+			"timestamp": "2025-02-04T..."
+		}
+	]
 }
 ```
 
@@ -146,16 +148,14 @@ Implements builder pattern for constructing Discord Embed messages.
 If the AI-generated summary exceeds 3000 characters:
 
 ```typescript
-description: this.description.length > 3000
-  ? this.description.substring(0, 3000) + '...(內容過長，已截斷)'
-  : this.description
+description: this.description.length > 3000 ? this.description.substring(0, 3000) + '...(內容過長，已截斷)' : this.description;
 ```
 
 ## Error Handling
 
-| Error | Handling |
-|-------|----------|
-| Issue not found | `SummarizeUsecase` throws error |
-| AI generation failed | Exception propagated to caller |
-| Invalid issue data | `Issue.isValid()` returns false |
-| Journal validation | Invalid journals are skipped |
+| Error                | Handling                        |
+| -------------------- | ------------------------------- |
+| Issue not found      | `SummarizeUsecase` throws error |
+| AI generation failed | Exception propagated to caller  |
+| Invalid issue data   | `Issue.isValid()` returns false |
+| Journal validation   | Invalid journals are skipped    |

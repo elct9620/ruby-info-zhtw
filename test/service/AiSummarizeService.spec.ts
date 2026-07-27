@@ -1,9 +1,9 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { AiSummarizeService } from '@/service/AiSummarizeService';
 import { Issue, IssueType } from '@/entity/Issue';
 import { Journal } from '@/entity/Journal';
+import { AiSummarizeService } from '@/service/AiSummarizeService';
 import { LangfuseService } from '@/service/LangfuseService';
 import { generateText, LanguageModel } from 'ai';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('ai', () => ({
 	generateText: vi.fn(),
@@ -204,7 +204,7 @@ describe('AiSummarizeService', () => {
 			expect(generateText).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: mockModel,
-				})
+				}),
 			);
 		});
 

@@ -119,17 +119,17 @@ Configuration
 
 ## Key Design Patterns
 
-| Pattern | Usage | Implementation |
-|---------|-------|----------------|
-| Dependency Injection | UseCase coordination | Constructor injection of Repository/Service/Presenter |
-| Strategy | Email routing decisions | `EmailRoute` union type + switch dispatch |
-| Builder | Discord message construction | DiscordSummarizePresenter setters |
-| Factory | Type conversion | `RestIssueRepository.mapTrackerToIssueType` |
-| Adapter | Data mapping | `RestIssueRepository.mapIssueResponse` |
-| Decorator | Cross-cutting concerns | `SpanTrackedIssueRepository` and `SpanTrackedSummarizePresenter` wrap ports with Langfuse span tracing |
-| Composition Root | Dependency wiring | `IssueDebounceObject.summarize()` assembles all dependencies and decorators |
-| Debounce | Email coalescing | `IssueDebounceObject` merges rapid emails via Durable Object alarm |
-| FailSafe | Webhook forwarding | `WebhookForwardService` uses `Promise.allSettled` so one failure doesn't affect others |
+| Pattern              | Usage                        | Implementation                                                                                         |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Dependency Injection | UseCase coordination         | Constructor injection of Repository/Service/Presenter                                                  |
+| Strategy             | Email routing decisions      | `EmailRoute` union type + switch dispatch                                                              |
+| Builder              | Discord message construction | DiscordSummarizePresenter setters                                                                      |
+| Factory              | Type conversion              | `RestIssueRepository.mapTrackerToIssueType`                                                            |
+| Adapter              | Data mapping                 | `RestIssueRepository.mapIssueResponse`                                                                 |
+| Decorator            | Cross-cutting concerns       | `SpanTrackedIssueRepository` and `SpanTrackedSummarizePresenter` wrap ports with Langfuse span tracing |
+| Composition Root     | Dependency wiring            | `IssueDebounceObject.summarize()` assembles all dependencies and decorators                            |
+| Debounce             | Email coalescing             | `IssueDebounceObject` merges rapid emails via Durable Object alarm                                     |
+| FailSafe             | Webhook forwarding           | `WebhookForwardService` uses `Promise.allSettled` so one failure doesn't affect others                 |
 
 ## Interface Definitions
 
@@ -137,23 +137,24 @@ All concrete implementations depend on abstractions defined in `usecase/interfac
 
 ```typescript
 interface IssueRepository {
-  findById(id: number): Promise<Issue | null>;
+	findById(id: number): Promise<Issue | null>;
 }
 
 interface SummarizeService {
-  execute(issue: Issue): Promise<string>;
+	execute(issue: Issue): Promise<string>;
 }
 
 interface SummarizePresenter {
-  setTitle(title: string): void;
-  setDescription(description: string): void;
-  setLink(link: string): void;
-  setType(type: IssueType): void;
-  render(): Promise<void>;
+	setTitle(title: string): void;
+	setDescription(description: string): void;
+	setLink(link: string): void;
+	setType(type: IssueType): void;
+	render(): Promise<void>;
 }
 ```
 
 This enables:
+
 - Unit testing with mock implementations
 - Swappable implementations without changing business logic
 - Clear contracts between layers

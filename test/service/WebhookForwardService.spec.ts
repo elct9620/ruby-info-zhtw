@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { WebhookForwardService } from '@/service/WebhookForwardService';
 import { LangfuseService } from '@/service/LangfuseService';
+import { WebhookForwardService } from '@/service/WebhookForwardService';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('WebhookForwardService', () => {
 	const originalFetch = global.fetch;
@@ -64,7 +64,7 @@ describe('WebhookForwardService', () => {
 					component: 'WebhookForwardService',
 					message: expect.stringContaining('Webhook forwarded successfully'),
 					issueId: 123,
-				})
+				}),
 			);
 		});
 
@@ -80,7 +80,7 @@ describe('WebhookForwardService', () => {
 					component: 'WebhookForwardService',
 					message: expect.stringContaining('Webhook forward failed'),
 					issueId: 123,
-				})
+				}),
 			);
 		});
 
@@ -96,14 +96,12 @@ describe('WebhookForwardService', () => {
 					component: 'WebhookForwardService',
 					message: expect.stringContaining('Webhook forward failed'),
 					issueId: 123,
-				})
+				}),
 			);
 		});
 
 		it('continues forwarding to other URLs when one fails', async () => {
-			global.fetch = vi.fn()
-				.mockRejectedValueOnce(new Error('Connection refused'))
-				.mockResolvedValueOnce({ ok: true });
+			global.fetch = vi.fn().mockRejectedValueOnce(new Error('Connection refused')).mockResolvedValueOnce({ ok: true });
 			const service = new WebhookForwardService(['https://fail.com/hook', 'https://ok.com/hook']);
 
 			await service.execute(123);
@@ -113,13 +111,13 @@ describe('WebhookForwardService', () => {
 				expect.objectContaining({
 					level: 'info',
 					message: expect.stringContaining('Webhook forwarded successfully'),
-				})
+				}),
 			);
 			expect(errorSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
 					level: 'error',
 					message: expect.stringContaining('Webhook forward failed'),
-				})
+				}),
 			);
 		});
 
@@ -149,11 +147,7 @@ describe('WebhookForwardService', () => {
 				createSpan: vi.fn().mockResolvedValue(undefined),
 			} as unknown as LangfuseService;
 
-			const service = new WebhookForwardService(
-				['https://example.com/webhook'],
-				langfuseService,
-				'trace-123'
-			);
+			const service = new WebhookForwardService(['https://example.com/webhook'], langfuseService, 'trace-123');
 
 			await service.execute(456);
 
@@ -163,7 +157,7 @@ describe('WebhookForwardService', () => {
 					name: 'webhook-forward',
 					input: { host: 'example.com' },
 					output: { success: true },
-				})
+				}),
 			);
 		});
 
@@ -173,9 +167,7 @@ describe('WebhookForwardService', () => {
 
 			await service.execute(456);
 
-			expect(logSpy).toHaveBeenCalledWith(
-				expect.objectContaining({ level: 'info' })
-			);
+			expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'info' }));
 		});
 
 		it('degrades gracefully when span creation fails', async () => {
@@ -184,11 +176,7 @@ describe('WebhookForwardService', () => {
 				createSpan: vi.fn().mockRejectedValue(new Error('Langfuse down')),
 			} as unknown as LangfuseService;
 
-			const service = new WebhookForwardService(
-				['https://example.com/webhook'],
-				langfuseService,
-				'trace-123'
-			);
+			const service = new WebhookForwardService(['https://example.com/webhook'], langfuseService, 'trace-123');
 
 			await expect(service.execute(456)).resolves.toBeUndefined();
 
@@ -196,7 +184,7 @@ describe('WebhookForwardService', () => {
 				expect.objectContaining({
 					level: 'error',
 					message: expect.stringContaining('Failed to create webhook-forward span'),
-				})
+				}),
 			);
 		});
 	});

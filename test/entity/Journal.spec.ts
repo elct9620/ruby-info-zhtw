@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { Journal } from '@/entity/Journal';
+import { describe, expect, it } from 'vitest';
 
 describe('Journal', () => {
 	describe('constructor', () => {

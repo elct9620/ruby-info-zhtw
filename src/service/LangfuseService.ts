@@ -61,11 +61,7 @@ export class LangfuseService {
 	private readonly baseUrl: string;
 	private readonly authHeader: string;
 
-	constructor(
-		publicKey: string,
-		secretKey: string,
-		baseUrl: string = 'https://cloud.langfuse.com'
-	) {
+	constructor(publicKey: string, secretKey: string, baseUrl: string = 'https://cloud.langfuse.com') {
 		this.baseUrl = baseUrl;
 		this.authHeader = 'Basic ' + btoa(`${publicKey}:${secretKey}`);
 	}
@@ -203,7 +199,10 @@ export class LangfuseService {
 		});
 
 		if (!response.ok) {
-			logger.error(`Langfuse ingestion API returned HTTP ${response.status} ${response.statusText}`, { statusCode: response.status, statusText: response.statusText });
+			logger.error(`Langfuse ingestion API returned HTTP ${response.status} ${response.statusText}`, {
+				statusCode: response.status,
+				statusText: response.statusText,
+			});
 		}
 
 		await response.body?.cancel();

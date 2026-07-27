@@ -69,7 +69,10 @@ export class CloudflareConfig {
 	get webhookForwardUrls(): string[] {
 		const raw = this.env.WEBHOOK_FORWARD_URLS || '';
 		if (!raw.trim()) return [];
-		return raw.split(',').map((url) => url.trim()).filter(Boolean);
+		return raw
+			.split(',')
+			.map((url) => url.trim())
+			.filter(Boolean);
 	}
 
 	get debounceDelay(): number {

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { LangfuseService } from '@/service/LangfuseService';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('LangfuseService', () => {
 	let mockFetch: ReturnType<typeof vi.fn>;
@@ -27,10 +27,7 @@ describe('LangfuseService', () => {
 				endTime: new Date('2024-01-01T00:00:01Z'),
 			});
 
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://cloud.langfuse.com/api/public/ingestion',
-				expect.any(Object)
-			);
+			expect(mockFetch).toHaveBeenCalledWith('https://cloud.langfuse.com/api/public/ingestion', expect.any(Object));
 		});
 
 		it('uses custom base URL when provided', async () => {
@@ -47,10 +44,7 @@ describe('LangfuseService', () => {
 				endTime: new Date('2024-01-01T00:00:01Z'),
 			});
 
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://custom.langfuse.com/api/public/ingestion',
-				expect.any(Object)
-			);
+			expect(mockFetch).toHaveBeenCalledWith('https://custom.langfuse.com/api/public/ingestion', expect.any(Object));
 		});
 	});
 
@@ -146,7 +140,15 @@ describe('LangfuseService', () => {
 				endTime: new Date(),
 			});
 
-			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion API returned HTTP 500 Internal Server Error', component: 'LangfuseService', statusCode: 500, statusText: 'Internal Server Error' }));
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'error',
+					message: 'Langfuse ingestion API returned HTTP 500 Internal Server Error',
+					component: 'LangfuseService',
+					statusCode: 500,
+					statusText: 'Internal Server Error',
+				}),
+			);
 			consoleSpy.mockRestore();
 		});
 
@@ -369,7 +371,15 @@ describe('LangfuseService', () => {
 				endTime: new Date(),
 			});
 
-			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion API returned HTTP 500 Internal Server Error', component: 'LangfuseService', statusCode: 500, statusText: 'Internal Server Error' }));
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'error',
+					message: 'Langfuse ingestion API returned HTTP 500 Internal Server Error',
+					component: 'LangfuseService',
+					statusCode: 500,
+					statusText: 'Internal Server Error',
+				}),
+			);
 			consoleSpy.mockRestore();
 		});
 	});
@@ -386,10 +396,7 @@ describe('LangfuseService', () => {
 				tags: ['email', 'ruby'],
 			});
 
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://cloud.langfuse.com/api/public/ingestion',
-				expect.any(Object)
-			);
+			expect(mockFetch).toHaveBeenCalledWith('https://cloud.langfuse.com/api/public/ingestion', expect.any(Object));
 
 			const callArgs = mockFetch.mock.calls[0][1];
 			const body = JSON.parse(callArgs.body);
@@ -446,7 +453,15 @@ describe('LangfuseService', () => {
 			const service = new LangfuseService('public-key', 'secret-key');
 			await service.createTrace({ id: 'trace-1', name: 'test' });
 
-			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion API returned HTTP 400 Bad Request', component: 'LangfuseService', statusCode: 400, statusText: 'Bad Request' }));
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'error',
+					message: 'Langfuse ingestion API returned HTTP 400 Bad Request',
+					component: 'LangfuseService',
+					statusCode: 400,
+					statusText: 'Bad Request',
+				}),
+			);
 			consoleSpy.mockRestore();
 		});
 	});
@@ -532,7 +547,15 @@ describe('LangfuseService', () => {
 				endTime: new Date(),
 			});
 
-			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion API returned HTTP 500 Internal Server Error', component: 'LangfuseService', statusCode: 500, statusText: 'Internal Server Error' }));
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'error',
+					message: 'Langfuse ingestion API returned HTTP 500 Internal Server Error',
+					component: 'LangfuseService',
+					statusCode: 500,
+					statusText: 'Internal Server Error',
+				}),
+			);
 			consoleSpy.mockRestore();
 		});
 	});
@@ -624,7 +647,15 @@ describe('LangfuseService', () => {
 			const service = new LangfuseService('public-key', 'secret-key');
 			await service.finalizeTrace({ traceId: 'trace-1' });
 
-			expect(consoleSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: 'Langfuse ingestion API returned HTTP 403 Forbidden', component: 'LangfuseService', statusCode: 403, statusText: 'Forbidden' }));
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'error',
+					message: 'Langfuse ingestion API returned HTTP 403 Forbidden',
+					component: 'LangfuseService',
+					statusCode: 403,
+					statusText: 'Forbidden',
+				}),
+			);
 			consoleSpy.mockRestore();
 		});
 	});

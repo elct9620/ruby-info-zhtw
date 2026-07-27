@@ -15,7 +15,8 @@ export class DiscordSummarizePresenter implements SummarizePresenter {
 			embeds: [
 				{
 					title: `${emoji} ${result.title}`,
-					description: result.description.length > 3000 ? result.description.substring(0, 3000) + '...(內容過長，已截斷)' : result.description,
+					description:
+						result.description.length > 3000 ? result.description.substring(0, 3000) + '...(內容過長，已截斷)' : result.description,
 					color: color,
 					url: result.link,
 					footer: {

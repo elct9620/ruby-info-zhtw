@@ -1,8 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { IssueType } from '@/entity/Issue';
 import { SpanTrackedSummarizePresenter } from '@/presenter/SpanTrackedSummarizePresenter';
 import { LangfuseService } from '@/service/LangfuseService';
-import { IssueType } from '@/entity/Issue';
 import { SummarizePresenter, SummarizeResult } from '@/usecase/interface';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function makeResult(overrides: Partial<SummarizeResult> = {}): SummarizeResult {
 	return {
