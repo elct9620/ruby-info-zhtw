@@ -175,3 +175,22 @@ Tests use Vitest with Cloudflare Workers pool.
 ```
 
 **Coverage target**: 90%+
+
+### Test Environment
+
+Every binding a test sees comes from `vitest.config.mts`. Tests never read `.dev.vars`, so a run behaves identically on a developer machine and in CI, and no production credential is reachable from a test.
+
+### Substitution Boundaries
+
+`IssueDebounceObject` is the Composition Root and assembles its own dependencies, so its tests substitute at external boundaries rather than injecting:
+
+| Boundary       | Substitute                | Covers                                           |
+| -------------- | ------------------------- | ------------------------------------------------ |
+| Language model | Mock model from `ai/test` | Summarization                                    |
+| HTTP           | `global.fetch`            | Bug Tracker, Discord webhook, forwarded webhooks |
+
+The language model is substituted at the AI SDK's model interface, never at HTTP. Tests hold no knowledge of the provider's endpoints or payload shapes.
+
+### Journey Assertions
+
+Composition Root tests assert what the community receives — the Discord embed and its contents — rather than intermediate steps such as the Bug Tracker request.
