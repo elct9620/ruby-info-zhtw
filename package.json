@@ -9,6 +9,8 @@
 		"test": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"typecheck": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
