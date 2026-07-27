@@ -1,7 +1,26 @@
 import { env, runDurableObjectAlarm } from 'cloudflare:test';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ISSUE_ID = 12345;
+const { SUMMARY_TEXT } = vi.hoisted(() => ({ SUMMARY_TEXT: 'AI generated summary' }));
+
+vi.mock('@ai-sdk/openai', async () => {
+	const { MockLanguageModelV3 } = await import('ai/test');
+	return {
+		createOpenAI: () => () =>
+			new MockLanguageModelV3({
+				doGenerate: async () => ({
+					content: [{ type: 'text', text: SUMMARY_TEXT }],
+					finishReason: { unified: 'stop', raw: 'stop' },
+					usage: {
+						inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrite: 0 },
+						outputTokens: { total: 50, text: 50, reasoning: 0 },
+					},
+					warnings: [],
+				}),
+			}),
+	};
+});
 
 function mockBugTrackerResponse() {
 	return {
@@ -16,20 +35,6 @@ function mockBugTrackerResponse() {
 	};
 }
 
-function mockOpenAiResponse() {
-	const body = JSON.stringify({
-		id: 'chatcmpl-123',
-		object: 'chat.completion',
-		model: 'gpt-5-mini',
-		choices: [{ index: 0, message: { content: 'AI Summary' }, finish_reason: 'stop' }],
-		usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
-	});
-	return new Response(body, {
-		status: 200,
-		headers: { 'content-type': 'application/json' },
-	});
-}
-
 function mockAllFetch() {
 	return vi.fn().mockImplementation((url: string) => {
 		if (typeof url === 'string' && url.includes('bugs.ruby-lang.org')) {
@@ -38,11 +43,14 @@ function mockAllFetch() {
 				json: () => Promise.resolve(mockBugTrackerResponse()),
 			});
 		}
-		if (typeof url === 'string' && url.includes('openai.com')) {
-			return Promise.resolve(mockOpenAiResponse());
-		}
 		return Promise.resolve({ ok: true });
 	});
+}
+
+function discordEmbed(fetchMock: ReturnType<typeof mockAllFetch>) {
+	const call = fetchMock.mock.calls.find(([url]) => String(url).includes('discord.test'));
+	if (!call) return undefined;
+	return JSON.parse(String((call[1] as RequestInit).body)).embeds[0];
 }
 
 function createStub() {
@@ -66,15 +74,19 @@ describe('IssueDebounceObject', () => {
 	});
 
 	describe('handleEmail', () => {
-		it('sets alarm that triggers summarize on first email', async () => {
-			global.fetch = mockAllFetch();
+		it('sets alarm that delivers the summary to Discord on first email', async () => {
+			const fetchMock = mockAllFetch();
+			global.fetch = fetchMock;
 			const stub = createStub();
 
 			await stub.handleEmail(ISSUE_ID);
 			await runDurableObjectAlarm(stub);
 
-			const urls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((call) => String(call[0]));
-			expect(urls.some((u) => u.includes('bugs.ruby-lang.org'))).toBe(true);
+			expect(discordEmbed(fetchMock)).toMatchObject({
+				title: `✨ ${mockBugTrackerResponse().issue.subject}`,
+				description: SUMMARY_TEXT,
+				url: `https://bugs.ruby-lang.org/issues/${ISSUE_ID}`,
+			});
 		});
 
 		it('logs debounce entry on first email', async () => {
@@ -83,7 +95,14 @@ describe('IssueDebounceObject', () => {
 
 			await stub.handleEmail(ISSUE_ID);
 
-			expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'info', message: `New debounce started for issue #${ISSUE_ID}`, component: 'IssueDebounceObject', issueId: ISSUE_ID }));
+			expect(logSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'info',
+					message: `New debounce started for issue #${ISSUE_ID}`,
+					component: 'IssueDebounceObject',
+					issueId: ISSUE_ID,
+				}),
+			);
 		});
 
 		it('resets alarm on subsequent emails', async () => {
@@ -105,7 +124,14 @@ describe('IssueDebounceObject', () => {
 			await stub.handleEmail(ISSUE_ID);
 			await stub.handleEmail(ISSUE_ID);
 
-			expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'info', message: `Debounce timer reset due to new email for issue #${ISSUE_ID}`, component: 'IssueDebounceObject', issueId: ISSUE_ID }));
+			expect(logSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'info',
+					message: `Debounce timer reset due to new email for issue #${ISSUE_ID}`,
+					component: 'IssueDebounceObject',
+					issueId: ISSUE_ID,
+				}),
+			);
 		});
 	});
 
@@ -148,7 +174,15 @@ describe('IssueDebounceObject', () => {
 			await stub.handleEmail(ISSUE_ID);
 			await runDurableObjectAlarm(stub);
 
-			expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'info', message: `Debounce alarm triggered for issue #${ISSUE_ID} after 2 emails, starting summarization`, component: 'IssueDebounceObject', issueId: ISSUE_ID, emailCount: 2 }));
+			expect(logSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'info',
+					message: `Debounce alarm triggered for issue #${ISSUE_ID} after 2 emails, starting summarization`,
+					component: 'IssueDebounceObject',
+					issueId: ISSUE_ID,
+					emailCount: 2,
+				}),
+			);
 		});
 
 		it('logs error when summarize fails', async () => {
@@ -163,7 +197,14 @@ describe('IssueDebounceObject', () => {
 			await stub.handleEmail(ISSUE_ID);
 			await runDurableObjectAlarm(stub);
 
-			expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', message: expect.stringContaining(`Summarization failed for issue #${ISSUE_ID}`), component: 'IssueDebounceObject', issueId: ISSUE_ID }));
+			expect(errorSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'error',
+					message: expect.stringContaining(`Summarization failed for issue #${ISSUE_ID}`),
+					component: 'IssueDebounceObject',
+					issueId: ISSUE_ID,
+				}),
+			);
 		});
 
 		it('clears alarm after successful processing', async () => {
