@@ -149,7 +149,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		});
 
 		const repository = new RestIssueRepository();
-		const summarizeService = new AiSummarizeService(openai('gpt-5-mini'), langfuseService, langfuseService ? traceId : undefined);
+		const summarizeService = new AiSummarizeService(openai('gpt-5.6-luna'), langfuseService, langfuseService ? traceId : undefined);
 
 		const trackedRepository = langfuseService ? new SpanTrackedIssueRepository(repository, langfuseService, traceId) : repository;
 
