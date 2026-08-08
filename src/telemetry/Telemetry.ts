@@ -1,9 +1,13 @@
+import { Logger } from '@/service/Logger';
+import { toErrorMessage } from '@/util/toErrorMessage';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { LangfuseVercelAiSdkIntegration } from '@langfuse/vercel-ai-sdk';
 import { context, type Span, type Tracer } from '@opentelemetry/api';
 import { AlwaysOffSampler, BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
 import { WorkerContextManager } from './WorkerContextManager';
 import { withSpan } from './withSpan';
+
+const logger = new Logger('Telemetry');
 
 export interface TelemetryParams {
 	publicKey?: string;
@@ -77,35 +81,47 @@ function setSerialized(span: Span, attribute: string, value: unknown): void {
  * it is configured.
  */
 export class Telemetry {
+	/**
+	 * Never throws. The summary reaching Discord does not depend on being able to
+	 * trace it, so a pipeline that cannot be built degrades to one that records
+	 * nothing rather than taking the flow down with it.
+	 */
 	static create({ publicKey, secretKey, baseUrl }: TelemetryParams): Telemetry {
-		ensureContextManager();
+		try {
+			ensureContextManager();
 
-		if (!publicKey || !secretKey) {
-			return new Telemetry(new BasicTracerProvider({ sampler: new AlwaysOffSampler() }));
+			if (!publicKey || !secretKey) return Telemetry.disabled();
+
+			return new Telemetry(
+				new BasicTracerProvider({
+					spanProcessors: [
+						new LangfuseSpanProcessor({
+							publicKey,
+							secretKey,
+							baseUrl,
+							// `immediate` issues one HTTP request per span, which would multiply
+							// into subrequests the Worker cannot spare. Batching is safe because
+							// every trace flushes before it ends.
+							exportMode: 'batched',
+							// Media upload issues extra API calls for base64 payloads; this
+							// pipeline only ever produces text.
+							mediaUploadEnabled: false,
+							// The default filter only passes spans Langfuse recognises — its own,
+							// and those carrying `gen_ai.` attributes. The flow's plain
+							// OpenTelemetry spans would otherwise be dropped without a trace.
+							shouldExportSpan: () => true,
+						}),
+					],
+				}),
+			);
+		} catch (error) {
+			logger.error(`Telemetry setup failed, continuing without tracing: ${toErrorMessage(error)}`, { error: toErrorMessage(error) });
+			return Telemetry.disabled();
 		}
+	}
 
-		return new Telemetry(
-			new BasicTracerProvider({
-				spanProcessors: [
-					new LangfuseSpanProcessor({
-						publicKey,
-						secretKey,
-						baseUrl,
-						// `immediate` issues one HTTP request per span, which would multiply
-						// into subrequests the Worker cannot spare. Batching is safe because
-						// every trace flushes before it ends.
-						exportMode: 'batched',
-						// Media upload issues extra API calls for base64 payloads; this
-						// pipeline only ever produces text.
-						mediaUploadEnabled: false,
-						// The default filter only passes spans Langfuse recognises — its own,
-						// and those carrying `gen_ai.` attributes. The flow's plain
-						// OpenTelemetry spans would otherwise be dropped without a trace.
-						shouldExportSpan: () => true,
-					}),
-				],
-			}),
-		);
+	private static disabled(): Telemetry {
+		return new Telemetry(new BasicTracerProvider({ sampler: new AlwaysOffSampler() }));
 	}
 
 	readonly tracer: Tracer;
@@ -146,7 +162,7 @@ export class Telemetry {
 		try {
 			await this.provider.forceFlush();
 		} catch (error) {
-			console.warn('telemetry flush failed:', error);
+			logger.warn(`Trace export failed: ${toErrorMessage(error)}`, { error: toErrorMessage(error) });
 		}
 	}
 }

@@ -37,8 +37,9 @@ export default defineConfig({
 	},
 	test: {
 		// The OpenTelemetry export path pulls a sizeable module graph into the Worker,
-		// and the first test to reach the bundled entry point pays the whole load cost
-		// before it can assert anything. Instrumented runs pay it twice over.
+		// and every test file that reaches the bundled entry point pays the whole load
+		// cost in its own isolate before it can assert anything. The budget is set by
+		// how long loading takes rather than by any assertion.
 		testTimeout: 15_000,
 		coverage: {
 			provider: 'istanbul',
