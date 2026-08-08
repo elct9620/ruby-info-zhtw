@@ -243,40 +243,43 @@ All log output uses JSON objects passed through `console.log` / `console.error` 
 }
 ```
 
-### Langfuse Tracing
+### Distributed Tracing
 
-The entire email summarization flow is traced via Langfuse for end-to-end observability. The trace begins when the Durable Object alarm fires (i.e., after the debounce delay expires), not when the email first arrives:
+The entire email summarization flow is traced as a single OpenTelemetry trace. The trace begins when the Durable Object alarm fires (i.e., after the debounce delay expires), not when the email first arrives:
 
 ```
-email-summarize (Trace)
-├── fetch-issue (Span) — Bug Tracker API call
-├── llm-call (Generation) — AI summary generation
-├── discord-webhook (Span) — Discord Webhook delivery
-└── webhook-forward (Span) — Webhook forwarding to configured URLs
+email-summarize (root span)
+├── fetch-issue     — Bug Tracker API call
+├── summarize-issue — AI summary generation
+├── discord-webhook — Discord Webhook delivery
+└── webhook-forward — Webhook forwarding (one span per configured URL)
 ```
 
-| Trace Property | Value                                              |
-| -------------- | -------------------------------------------------- |
-| Trace name     | `email-summarize`                                  |
-| Trace tags     | `['summarize']`                                    |
-| Trace input    | `{ issueId }`                                      |
-| Trace output   | `{ success: true }` or `{ success: false, error }` |
+Every span of one summarization belongs to a single trace, whichever step emitted it. The AI generation span is produced by the AI SDK under the function identifier `summarize-issue`, and carries the model, token usage and latency the SDK records; the flow does not restate them.
 
-| Child Event       | Type       | Description                                                                                |
-| ----------------- | ---------- | ------------------------------------------------------------------------------------------ |
-| `fetch-issue`     | Span       | Tracks Bug Tracker API latency; records `issueId` as input and whether the issue was found |
-| `llm-call`        | Generation | Tracks AI model call with prompt, response, token usage, and model ID                      |
-| `discord-webhook` | Span       | Tracks Discord Webhook delivery; records success status                                    |
-| `webhook-forward` | Span       | Tracks webhook forwarding; records per-URL success/failure                                 |
+| Trace Property | Value                        |
+| -------------- | ---------------------------- |
+| Trace name     | `email-summarize`            |
+| Trace tags     | `['summarize']`              |
+| Trace input    | `{ issueId }`                |
+| Trace output   | `{ success: true \| false }` |
 
-Traces are exported to Langfuse for monitoring request flow, AI model usage, latency, and costs. When Langfuse credentials are not configured, tracing is silently skipped.
+| Span              | Records                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `fetch-issue`     | Bug Tracker latency, the requested issue id, and whether the issue was found |
+| `discord-webhook` | Discord Webhook latency. The webhook URL is a credential and is not recorded |
+| `webhook-forward` | Forwarding latency, the target host, and the HTTP status                     |
+
+A step that fails marks its own span as failed, so a failure stays visible in the trace even where the flow swallows it to let the other steps continue.
+
+Traces are exported over OTLP to Langfuse for monitoring request flow, AI model usage, latency, and costs. A trace is exported before the invocation that produced it ends, so no trace is lost to the Worker terminating. When Langfuse credentials are not configured, no span is recorded and the flow runs unchanged.
 
 ### Observability Layering
 
-| Layer               | Tool                   | Responsibility                                                     |
-| ------------------- | ---------------------- | ------------------------------------------------------------------ |
-| Structured Logging  | Workers Logs (console) | Global diagnostics, error tracking, debounce events                |
-| Distributed Tracing | Langfuse               | End-to-end summarization flow performance, AI model usage and cost |
+| Layer               | Tool                     | Responsibility                                                     |
+| ------------------- | ------------------------ | ------------------------------------------------------------------ |
+| Structured Logging  | Workers Logs (console)   | Global diagnostics, error tracking, debounce events                |
+| Distributed Tracing | OpenTelemetry → Langfuse | End-to-end summarization flow performance, AI model usage and cost |
 
 ---
 
@@ -284,14 +287,14 @@ Traces are exported to Langfuse for monitoring request flow, AI model usage, lat
 
 ### Email Processing Errors
 
-| Error Condition                    | Handling                                                                      |
-| ---------------------------------- | ----------------------------------------------------------------------------- |
-| Email parsing failed               | Log structured error, email not processed                                     |
-| Bug Tracker API cannot fetch Issue | Log structured error, no Discord message sent (FailSafe)                      |
-| OpenAI API call failed             | Log structured error, no Discord message sent (FailSafe)                      |
-| Discord Webhook send failed        | Log structured error with HTTP status code and response content               |
-| Discord Webhook rate limited (429) | Log structured error, no retry                                                |
-| Langfuse API call failed           | Log structured error, main flow continues uninterrupted (GracefulDegradation) |
+| Error Condition                    | Handling                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| Email parsing failed               | Log structured error, email not processed                                       |
+| Bug Tracker API cannot fetch Issue | Log structured error, no Discord message sent (FailSafe)                        |
+| OpenAI API call failed             | Log structured error, no Discord message sent (FailSafe)                        |
+| Discord Webhook send failed        | Log structured error with HTTP status code and response content                 |
+| Discord Webhook rate limited (429) | Log structured error, no retry                                                  |
+| Trace export to Langfuse failed    | Log structured warning, main flow continues uninterrupted (GracefulDegradation) |
 
 ### Debounce Errors
 
@@ -342,7 +345,7 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Discord API         | `https://discord.com/api/v10/users/@me/guilds/{guildId}/member` | Verify user roles                             |
 | Discord Webhook     | Configured Webhook URL                                          | Send summary messages                         |
 | OpenAI API          | Via AI SDK                                                      | Generate Chinese summaries                    |
-| Langfuse            | Via Batch Ingestion API                                         | Trace email processing flow for observability |
+| Langfuse            | Via OpenTelemetry OTLP                                          | Trace email processing flow for observability |
 | Configured Webhooks | URLs from `WEBHOOK_FORWARD_URLS`                                | Forward issue event payload on debounce alarm |
 
 ---
@@ -390,6 +393,8 @@ Cloudflare Workers email handler receives emails at `core@ruby.aotoki.cloud`.
 | Durable Object      | Cloudflare Workers stateful singleton used to manage per-Issue debounce timer and context                                                      |
 | Structured Log      | A JSON-formatted log entry with standardized fields (`level`, `message`, `component`) output via `console` methods for Cloudflare Workers Logs |
 | Webhook Forwarding  | Sending a minimal issue event payload (`{"issue_id": <number>}`) to externally configured webhook URLs when a debounce alarm fires             |
+| Span                | A timed step within a trace, carrying attributes describing what that step did and whether it failed                                           |
+| Trace               | The set of spans belonging to one summarization, from the alarm firing to the last delivery                                                    |
 
 ---
 

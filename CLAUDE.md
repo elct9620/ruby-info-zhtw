@@ -31,7 +31,8 @@ Controller → UseCase → Service/Repository → Entity
 
 - `controller/` - HTTP routes and email handler adapter
 - `usecase/` - Business logic orchestration, interfaces in `interface.ts`
-- `service/` - AI summarization, email dispatch, session encryption, Langfuse tracing
+- `service/` - AI summarization, email dispatch, session encryption
+- `telemetry/` - OpenTelemetry tracing exported to Langfuse
 - `repository/` - Ruby Bug Tracker API client
 - `presenter/` - Discord Embed formatting
 - `entity/` - Domain models (Issue, Journal)

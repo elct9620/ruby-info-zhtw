@@ -48,15 +48,19 @@ This project follows Clean Architecture principles with clear separation of conc
 │
 ├── repository/                 # Data access layer
 │   ├── RestIssueRepository.ts  # Ruby Bug Tracker API client
-│   └── SpanTrackedIssueRepository.ts  # Decorator: adds Langfuse span tracing
+│   └── SpanTrackedIssueRepository.ts  # Decorator: adds a tracing span
 │
 ├── service/                    # Business services
 │   ├── AiSummarizeService.ts   # AI summary generation
 │   ├── DiscordRoleAccessService.ts  # Discord role verification
 │   ├── EmailDispatcher.ts      # Email routing logic
-│   ├── LangfuseService.ts      # Langfuse tracing (Trace, Span, Generation)
 │   ├── SessionCipher.ts        # Session encryption
 │   └── WebhookForwardService.ts # Webhook forwarding (FailSafe via Promise.allSettled)
+│
+├── telemetry/                  # Tracing infrastructure
+│   ├── Telemetry.ts            # OTel provider, root span, Langfuse export
+│   ├── WorkerContextManager.ts # OTel active context over AsyncLocalStorage
+│   └── withSpan.ts             # Span lifecycle: attributes, error status, end
 │
 ├── usecase/                    # Business logic
 │   ├── interface.ts            # Dependency injection interfaces
@@ -64,11 +68,13 @@ This project follows Clean Architecture principles with clear separation of conc
 │
 ├── presenter/                  # Output formatting
 │   ├── DiscordSummarizePresenter.ts   # Discord Embed formatting + delivery
-│   └── SpanTrackedSummarizePresenter.ts  # Decorator: adds Langfuse span tracing
+│   └── SpanTrackedSummarizePresenter.ts  # Decorator: adds a tracing span
 │
 └── prompts/                    # AI prompt templates
     └── summarize.md            # Mustache template for summaries
 ```
+
+`telemetry/` sits beside the business layers rather than inside `service/`: it carries no domain behaviour, and every layer from the Composition Root down to the repository reaches for it.
 
 ## Dependency Flow
 
@@ -81,26 +87,23 @@ Email Event
     │        │
     │        └─→ IssueDebounceObject (Composition Root)
     │             ├─→ Debounce rapid emails via Durable Object alarm
-    │             ├─→ LangfuseService.createTrace (email-summarize)
-    │             ├─→ Wire decorators (SpanTracked*) when Langfuse enabled
+    │             ├─→ Telemetry.trace (email-summarize root span, flushed on exit)
     │             │
     │             ├─→ Promise.allSettled (parallel execution)
     │             │   ├─→ WebhookForwardService → POST {issue_id} to configured URLs
-    │             │   │   └─→ Langfuse webhook-forward span (host only, token redacted)
+    │             │   │   └─→ webhook-forward span (host and status; URL is a credential)
     │             │   │
     │             │   └─→ SummarizeUsecase
     │                  ├─→ SpanTrackedIssueRepository (fetch-issue span)
     │                  │   └─→ RestIssueRepository → bugs.ruby-lang.org API
     │                  │       └─→ Issue (domain model)
     │                  │
-    │                  ├─→ AiSummarizeService (llm-call generation)
-    │                  │   ├─→ OpenAI API (GPT-5-mini)
+    │                  ├─→ AiSummarizeService
+    │                  │   ├─→ OpenAI API (generation span emitted by the AI SDK)
     │                  │   └─→ Mustache template
     │                  │
-    │                  ├─→ SpanTrackedSummarizePresenter (discord-webhook span)
-    │                  │   └─→ DiscordSummarizePresenter → Discord Webhook API
-    │                  │
-    │                  └─→ LangfuseService.finalizeTrace
+    │                  └─→ SpanTrackedSummarizePresenter (discord-webhook span)
+    │                      └─→ DiscordSummarizePresenter → Discord Webhook API
 
 HTTP Request
     │
@@ -119,17 +122,18 @@ Configuration
 
 ## Key Design Patterns
 
-| Pattern              | Usage                        | Implementation                                                                                         |
-| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Dependency Injection | UseCase coordination         | Constructor injection of Repository/Service/Presenter                                                  |
-| Strategy             | Email routing decisions      | `EmailRoute` union type + switch dispatch                                                              |
-| Builder              | Discord message construction | DiscordSummarizePresenter setters                                                                      |
-| Factory              | Type conversion              | `RestIssueRepository.mapTrackerToIssueType`                                                            |
-| Adapter              | Data mapping                 | `RestIssueRepository.mapIssueResponse`                                                                 |
-| Decorator            | Cross-cutting concerns       | `SpanTrackedIssueRepository` and `SpanTrackedSummarizePresenter` wrap ports with Langfuse span tracing |
-| Composition Root     | Dependency wiring            | `IssueDebounceObject.summarize()` assembles all dependencies and decorators                            |
-| Debounce             | Email coalescing             | `IssueDebounceObject` merges rapid emails via Durable Object alarm                                     |
-| FailSafe             | Webhook forwarding           | `WebhookForwardService` uses `Promise.allSettled` so one failure doesn't affect others                 |
+| Pattern              | Usage                        | Implementation                                                                                       |
+| -------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Dependency Injection | UseCase coordination         | Constructor injection of Repository/Service/Presenter                                                |
+| Strategy             | Email routing decisions      | `EmailRoute` union type + switch dispatch                                                            |
+| Builder              | Discord message construction | `DiscordSummarizePresenter` assembles the Embed from a `SummarizeResult`                             |
+| Factory              | Type conversion              | `RestIssueRepository.mapTrackerToIssueType`                                                          |
+| Adapter              | Data mapping                 | `RestIssueRepository.mapIssueResponse`                                                               |
+| Decorator            | Cross-cutting concerns       | `SpanTrackedIssueRepository` and `SpanTrackedSummarizePresenter` wrap ports with a tracing span      |
+| Null Object          | Optional tracing             | `Telemetry` without credentials samples nothing, so no caller branches on whether tracing is enabled |
+| Composition Root     | Dependency wiring            | `IssueDebounceObject.summarize()` assembles all dependencies and decorators                          |
+| Debounce             | Email coalescing             | `IssueDebounceObject` merges rapid emails via Durable Object alarm                                   |
+| FailSafe             | Webhook forwarding           | `WebhookForwardService` uses `Promise.allSettled` so one failure doesn't affect others               |
 
 ## Interface Definitions
 
@@ -144,12 +148,15 @@ interface SummarizeService {
 	execute(issue: Issue): Promise<string>;
 }
 
+interface SummarizeResult {
+	title: string;
+	type: IssueType;
+	link: string;
+	description: string;
+}
+
 interface SummarizePresenter {
-	setTitle(title: string): void;
-	setDescription(description: string): void;
-	setLink(link: string): void;
-	setType(type: IssueType): void;
-	render(): Promise<void>;
+	render(result: SummarizeResult): Promise<void>;
 }
 ```
 
@@ -170,15 +177,20 @@ Tests use Vitest with Cloudflare Workers pool.
 ├── repository/                 # API client tests (mocked fetch)
 ├── service/                    # Service tests
 ├── presenter/                  # Presenter tests (including decorators)
+├── telemetry/                  # Tracing infrastructure tests
 ├── usecase/                    # Integration tests
-└── config.spec.ts              # Configuration tests
+├── support/                    # Test helpers (not collected as tests)
+├── config.spec.ts              # Configuration tests
+└── environment.spec.ts         # Test environment isolation
 ```
 
 **Coverage target**: 90%+
 
 ### Test Environment
 
-Every binding a test sees comes from `vitest.config.mts`. Tests never read `.dev.vars`, so a run behaves identically on a developer machine and in CI, and no production credential is reachable from a test.
+Every binding a test sees comes from `vitest.config.mts`. Tests never read `.dev.vars`, so a run behaves identically on a developer machine and in CI, and no production credential is reachable from a test. `environment.spec.ts` holds that promise to its word rather than leaving it to convention.
+
+Langfuse credentials are bound empty, so the suite records no spans and reaches no exporter.
 
 ### Substitution Boundaries
 
@@ -190,6 +202,10 @@ Every binding a test sees comes from `vitest.config.mts`. Tests never read `.dev
 | HTTP           | `global.fetch`            | Bug Tracker, Discord webhook, forwarded webhooks |
 
 The language model is substituted at the AI SDK's model interface, never at HTTP. Tests hold no knowledge of the provider's endpoints or payload shapes.
+
+### Tracing Assertions
+
+Components that emit spans take a `Tracer`, so a test hands them one backed by an in-memory exporter (`test/support/recordingTracer.ts`) and asserts the spans that resulted. Nothing asserts the OTLP payload or that it reached Langfuse — that is the exporter's contract, not this project's. What the project owns and therefore tests: which spans exist, what they carry, whether a failure is marked, and whether they share one trace.
 
 ### Journey Assertions
 
