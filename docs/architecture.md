@@ -60,7 +60,8 @@ This project follows Clean Architecture principles with clear separation of conc
 ├── telemetry/                  # Tracing infrastructure
 │   ├── Telemetry.ts            # OTel provider, root span, Langfuse export
 │   ├── WorkerContextManager.ts # OTel active context over AsyncLocalStorage
-│   └── withSpan.ts             # Span lifecycle: attributes, error status, end
+│   ├── langfuseAttributes.ts   # The only module that knows Langfuse's attributes
+│   └── withSpan.ts             # Span lifecycle: input, output, error status, end
 │
 ├── usecase/                    # Business logic
 │   ├── interface.ts            # Dependency injection interfaces
@@ -91,7 +92,7 @@ Email Event
     │             │
     │             ├─→ Promise.allSettled (parallel execution)
     │             │   ├─→ WebhookForwardService → POST {issue_id} to configured URLs
-    │             │   │   └─→ webhook-forward span (host and status; URL is a credential)
+    │             │   │   └─→ webhook-forward span (payload, host, status; URL is a credential)
     │             │   │
     │             │   └─→ SummarizeUsecase
     │                  ├─→ SpanTrackedIssueRepository (fetch-issue span)

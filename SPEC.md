@@ -257,20 +257,20 @@ email-summarize (root span)
 
 Every span of one summarization belongs to a single trace, whichever step emitted it. The AI generation span is produced by the AI SDK under the function identifier `summarize-issue`, and carries the model, token usage and latency the SDK records; the flow does not restate them.
 
-| Trace Property | Value                        |
-| -------------- | ---------------------------- |
-| Trace name     | `email-summarize`            |
-| Trace tags     | `['summarize']`              |
-| Trace input    | `{ issueId }`                |
-| Trace output   | `{ success: true \| false }` |
+The trace is named `email-summarize` and tagged `summarize`, which is how one summarization is found among the rest.
 
-| Span              | Records                                                                      |
-| ----------------- | ---------------------------------------------------------------------------- |
-| `fetch-issue`     | Bug Tracker latency, the requested issue id, and whether the issue was found |
-| `discord-webhook` | Discord Webhook latency. The webhook URL is a credential and is not recorded |
-| `webhook-forward` | Forwarding latency, the target host, and the HTTP status                     |
+Every span records how long its step took, what it received, and what it produced:
 
-A step that fails marks its own span as failed, so a failure stays visible in the trace even where the flow swallows it to let the other steps continue.
+| Span                     | Input                            | Output                                       |
+| ------------------------ | -------------------------------- | -------------------------------------------- |
+| `email-summarize` (root) | The issue id                     | Whether every step succeeded                 |
+| `fetch-issue`            | The requested issue id           | Whether the issue was found, and its subject |
+| `discord-webhook`        | The summary title, link and type | —                                            |
+| `webhook-forward`        | The forwarded payload            | —                                            |
+
+`webhook-forward` additionally records the target host and the HTTP status. No span records a webhook URL: those are credentials.
+
+A step that fails marks its own span as failed, so a failure stays visible in the trace even where the flow swallows it to let the other steps continue. A step that fails records no output, since there is none.
 
 Traces are exported over OTLP to Langfuse for monitoring request flow, AI model usage, latency, and costs. A trace is exported before the invocation that produced it ends, so no trace is lost to the Worker terminating. When Langfuse credentials are not configured, no span is recorded and the flow runs unchanged.
 
