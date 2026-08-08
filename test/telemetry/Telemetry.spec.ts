@@ -80,8 +80,8 @@ describe('Telemetry', () => {
 			expect(root?.attributes).toMatchObject({
 				'langfuse.trace.name': 'email-summarize',
 				'langfuse.trace.tags': ['summarize'],
-				'langfuse.trace.input': JSON.stringify({ issueId: 12345 }),
-				'langfuse.trace.output': JSON.stringify({ success: true }),
+				'langfuse.observation.input': JSON.stringify({ issueId: 12345 }),
+				'langfuse.observation.output': JSON.stringify({ success: true }),
 			});
 		});
 
@@ -130,7 +130,7 @@ describe('Telemetry', () => {
 
 		await telemetry.trace({ name: 'email-summarize' }, async () => {
 			root = trace.getActiveSpan()?.spanContext();
-			await withSpan(telemetry.tracer, 'fetch-issue', async () => {
+			await withSpan(telemetry.tracer, { name: 'fetch-issue' }, async () => {
 				const span = trace.getActiveSpan() as unknown as ReadableSpan;
 				child = { traceId: span.spanContext().traceId, parentSpanId: span.parentSpanContext?.spanId };
 			});

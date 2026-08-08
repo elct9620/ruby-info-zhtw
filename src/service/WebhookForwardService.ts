@@ -18,7 +18,7 @@ export class WebhookForwardService {
 	}
 
 	private async forward(url: string, issueId: number): Promise<void> {
-		return withSpan(this.tracer, 'webhook-forward', async (span) => {
+		return withSpan(this.tracer, { name: 'webhook-forward', input: { issue_id: issueId } }, async (span) => {
 			span.setAttribute('server.address', this.safeHostname(url));
 
 			const response = await fetch(url, {

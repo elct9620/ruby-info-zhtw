@@ -14,11 +14,14 @@ export class SpanTrackedIssueRepository implements IssueRepository {
 	) {}
 
 	async findById(id: number): Promise<Issue | null> {
-		return withSpan(this.tracer, 'fetch-issue', async (span) => {
-			span.setAttribute('issue.id', id);
-			const issue = await this.repository.findById(id);
-			span.setAttribute('issue.found', issue !== null);
-			return issue;
-		});
+		return withSpan(
+			this.tracer,
+			{
+				name: 'fetch-issue',
+				input: { issueId: id },
+				output: (issue) => ({ found: issue !== null, subject: issue?.subject }),
+			},
+			() => this.repository.findById(id),
+		);
 	}
 }

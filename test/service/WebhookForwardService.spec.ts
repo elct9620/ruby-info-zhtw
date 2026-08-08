@@ -145,7 +145,11 @@ describe('WebhookForwardService', () => {
 
 			expect(spans()).toHaveLength(1);
 			expect(spans()[0].name).toBe('webhook-forward');
-			expect(spans()[0].attributes).toEqual({ 'server.address': 'example.com', 'http.response.status_code': 200 });
+			expect(spans()[0].attributes).toEqual({
+				'langfuse.observation.input': JSON.stringify({ issue_id: 456 }),
+				'server.address': 'example.com',
+				'http.response.status_code': 200,
+			});
 		});
 
 		it('should mark the span as failed when the response is not ok', async () => {

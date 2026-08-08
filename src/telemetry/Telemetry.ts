@@ -2,10 +2,11 @@ import { Logger } from '@/service/Logger';
 import { toErrorMessage } from '@/util/toErrorMessage';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { LangfuseVercelAiSdkIntegration } from '@langfuse/vercel-ai-sdk';
-import { context, type Span, type Tracer } from '@opentelemetry/api';
+import { context, type Tracer } from '@opentelemetry/api';
 import { AlwaysOffSampler, BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
+import { TRACE_NAME, TRACE_TAGS } from './langfuseAttributes';
+import { withSpan, type SpanParams } from './withSpan';
 import { WorkerContextManager } from './WorkerContextManager';
-import { withSpan } from './withSpan';
 
 const logger = new Logger('Telemetry');
 
@@ -15,23 +16,9 @@ export interface TelemetryParams {
 	baseUrl?: string;
 }
 
-export interface TraceParams<T> {
-	name: string;
+export interface TraceParams<T> extends SpanParams<T> {
 	tags?: string[];
-	input?: unknown;
-	output?: (result: T) => unknown;
 }
-
-/**
- * Attributes Langfuse reads off the root span to name the trace, file it, and
- * show what went in and out. Every other span this project emits uses plain
- * OpenTelemetry attributes, so Langfuse's vocabulary stays confined to this one
- * place and the export configuration.
- */
-const TRACE_NAME = 'langfuse.trace.name';
-const TRACE_TAGS = 'langfuse.trace.tags';
-const TRACE_INPUT = 'langfuse.trace.input';
-const TRACE_OUTPUT = 'langfuse.trace.output';
 
 /**
  * Instrumentation scope tells a reader which library emitted a span. The AI SDK
@@ -58,14 +45,6 @@ function ensureContextManager(): void {
 
 	context.setGlobalContextManager(new WorkerContextManager());
 	contextManagerRegistered = true;
-}
-
-/**
- * Langfuse reads these attributes as JSON, and leaves a string untouched.
- */
-function setSerialized(span: Span, attribute: string, value: unknown): void {
-	if (value === undefined || value === null) return;
-	span.setAttribute(attribute, typeof value === 'string' ? value : JSON.stringify(value));
 }
 
 /**
@@ -139,14 +118,10 @@ export class Telemetry {
 	 */
 	async trace<T>({ name, tags, input, output }: TraceParams<T>, fn: () => Promise<T>): Promise<T> {
 		try {
-			return await withSpan(this.tracer, name, async (span) => {
+			return await withSpan(this.tracer, { name, input, output }, (span) => {
 				span.setAttribute(TRACE_NAME, name);
 				if (tags) span.setAttribute(TRACE_TAGS, tags);
-				setSerialized(span, TRACE_INPUT, input);
-
-				const result = await fn();
-				setSerialized(span, TRACE_OUTPUT, output?.(result));
-				return result;
+				return fn();
 			});
 		} finally {
 			await this.flush();

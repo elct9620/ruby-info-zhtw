@@ -31,7 +31,10 @@ describe('SpanTrackedIssueRepository', () => {
 
 		expect(spans()).toHaveLength(1);
 		expect(spans()[0].name).toBe('fetch-issue');
-		expect(spans()[0].attributes).toEqual({ 'issue.id': 42, 'issue.found': true });
+		expect(spans()[0].attributes).toEqual({
+			'langfuse.observation.input': JSON.stringify({ issueId: 42 }),
+			'langfuse.observation.output': JSON.stringify({ found: true, subject: 'Bug report' }),
+		});
 	});
 
 	it('should record the issue as not found when the repository returns null', async () => {
@@ -41,7 +44,7 @@ describe('SpanTrackedIssueRepository', () => {
 		const result = await new SpanTrackedIssueRepository(innerRepository, tracer).findById(99);
 
 		expect(result).toBeNull();
-		expect(spans()[0].attributes).toEqual({ 'issue.id': 99, 'issue.found': false });
+		expect(spans()[0].attributes['langfuse.observation.output']).toBe(JSON.stringify({ found: false }));
 	});
 
 	it('should end the span and propagate the error when the repository throws', async () => {

@@ -39,12 +39,22 @@ describe('SpanTrackedSummarizePresenter', () => {
 		expect(spans()[0].name).toBe('discord-webhook');
 	});
 
+	it('should record what was published', async () => {
+		const { tracer, spans } = recordingTracer();
+
+		await new SpanTrackedSummarizePresenter(innerPresenter, tracer).render(makeResult({ title: 'Issue #42' }));
+
+		expect(spans()[0].attributes['langfuse.observation.input']).toBe(
+			JSON.stringify({ title: 'Issue #42', link: 'https://example.com', type: IssueType.Unknown }),
+		);
+	});
+
 	it('should keep the webhook URL out of the span', async () => {
 		const { tracer, spans } = recordingTracer();
 
 		await new SpanTrackedSummarizePresenter(innerPresenter, tracer).render(makeResult());
 
-		expect(spans()[0].attributes).toEqual({});
+		expect(JSON.stringify(spans()[0].attributes)).not.toContain('discord');
 	});
 
 	it('should end the span and propagate the error when delivery fails', async () => {
