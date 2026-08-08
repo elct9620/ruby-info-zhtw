@@ -36,6 +36,10 @@ export default defineConfig({
 		},
 	},
 	test: {
+		// The OpenTelemetry export path pulls a sizeable module graph into the Worker,
+		// and the first test to reach the bundled entry point pays the whole load cost
+		// before it can assert anything. Instrumented runs pay it twice over.
+		testTimeout: 15_000,
 		coverage: {
 			provider: 'istanbul',
 			reporter: ['text', 'lcov', 'html'],

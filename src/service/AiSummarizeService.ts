@@ -3,18 +3,13 @@ import Mustache from 'mustache';
 
 import { Issue } from '@/entity/Issue';
 import promptTemplate from '@/prompts/summarize.md';
+import { Telemetry } from '@/telemetry/Telemetry';
 import { SummarizeService } from '@/usecase/interface';
-import { toErrorMessage } from '@/util/toErrorMessage';
-import { LangfuseService } from './LangfuseService';
-import { Logger } from './Logger';
-
-const logger = new Logger('AiSummarizeService');
 
 export class AiSummarizeService implements SummarizeService {
 	constructor(
 		private readonly llmModel: LanguageModel,
-		private readonly langfuseService?: LangfuseService,
-		private readonly externalTraceId?: string,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async execute(issue: Issue): Promise<string> {
@@ -39,43 +34,13 @@ export class AiSummarizeService implements SummarizeService {
 			})),
 		});
 
-		const startTime = new Date();
-		const { text, response, usage } = await generateText({
+		const { text } = await generateText({
 			model: this.llmModel,
 			prompt,
+			// The AI SDK records the model, token usage and latency itself; passing the
+			// integration per call keeps the generation inside the trace that owns it.
+			telemetry: { integrations: this.telemetry.integration, functionId: 'summarize-issue' },
 		});
-		const endTime = new Date();
-
-		if (this.langfuseService) {
-			try {
-				const traceId = this.externalTraceId ?? crypto.randomUUID();
-				const generationParams = {
-					generationId: crypto.randomUUID(),
-					traceId,
-					model: response.modelId,
-					input: prompt,
-					output: text,
-					startTime,
-					endTime,
-					usage: {
-						inputTokens: usage.inputTokens,
-						outputTokens: usage.outputTokens,
-					},
-					metadata: { issueId: issue.id },
-				};
-
-				if (this.externalTraceId) {
-					await this.langfuseService.createGeneration(generationParams);
-				} else {
-					await this.langfuseService.traceGeneration({
-						...generationParams,
-						traceName: 'summarize-issue',
-					});
-				}
-			} catch (error) {
-				logger.error('Failed to send trace to Langfuse', { error: toErrorMessage(error) });
-			}
-		}
 
 		return text;
 	}

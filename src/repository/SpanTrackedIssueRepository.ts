@@ -1,40 +1,24 @@
 import { Issue } from '@/entity/Issue';
-import { LangfuseService } from '@/service/LangfuseService';
-import { Logger } from '@/service/Logger';
+import { withSpan } from '@/telemetry/withSpan';
 import { IssueRepository } from '@/usecase/interface';
-import { toErrorMessage } from '@/util/toErrorMessage';
-
-const logger = new Logger('SpanTrackedIssueRepository');
+import type { Tracer } from '@opentelemetry/api';
 
 /**
- * Wraps an IssueRepository with Langfuse span tracing for observability.
+ * Wraps an IssueRepository so the Bug Tracker call appears as its own span in
+ * the surrounding trace.
  */
 export class SpanTrackedIssueRepository implements IssueRepository {
 	constructor(
 		private readonly repository: IssueRepository,
-		private readonly langfuseService: LangfuseService,
-		private readonly traceId: string,
+		private readonly tracer: Tracer,
 	) {}
 
 	async findById(id: number): Promise<Issue | null> {
-		const startTime = new Date();
-		const issue = await this.repository.findById(id);
-		const endTime = new Date();
-
-		try {
-			await this.langfuseService.createSpan({
-				id: crypto.randomUUID(),
-				traceId: this.traceId,
-				name: 'fetch-issue',
-				startTime,
-				endTime,
-				input: { issueId: id },
-				output: { found: !!issue, subject: issue?.subject },
-			});
-		} catch (error) {
-			logger.error('Failed to create fetch-issue span', { error: toErrorMessage(error) });
-		}
-
-		return issue;
+		return withSpan(this.tracer, 'fetch-issue', async (span) => {
+			span.setAttribute('issue.id', id);
+			const issue = await this.repository.findById(id);
+			span.setAttribute('issue.found', issue !== null);
+			return issue;
+		});
 	}
 }

@@ -1,87 +1,54 @@
 import { Issue } from '@/entity/Issue';
 import { SpanTrackedIssueRepository } from '@/repository/SpanTrackedIssueRepository';
-import { LangfuseService } from '@/service/LangfuseService';
 import { IssueRepository } from '@/usecase/interface';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { recordingTracer } from '../support/recordingTracer';
 
 describe('SpanTrackedIssueRepository', () => {
-	let mockFetch: ReturnType<typeof vi.fn>;
-	let langfuseService: LangfuseService;
 	let innerRepository: IssueRepository;
 
 	beforeEach(() => {
-		mockFetch = vi.fn().mockResolvedValue({ ok: true });
-		vi.stubGlobal('fetch', mockFetch);
-		vi.stubGlobal('crypto', {
-			randomUUID: () => 'test-uuid',
-		});
-		langfuseService = new LangfuseService('pub-key', 'sec-key');
-		innerRepository = {
-			findById: vi.fn(),
-		};
+		innerRepository = { findById: vi.fn() };
 	});
 
-	it('delegates findById to inner repository', async () => {
+	it('should return what the inner repository returns', async () => {
 		const issue = new Issue(42, { subject: 'Test', description: '', authorName: '', link: '' });
 		vi.mocked(innerRepository.findById).mockResolvedValue(issue);
+		const { tracer } = recordingTracer();
 
-		const tracked = new SpanTrackedIssueRepository(innerRepository, langfuseService, 'trace-1');
-		const result = await tracked.findById(42);
+		const result = await new SpanTrackedIssueRepository(innerRepository, tracer).findById(42);
 
 		expect(innerRepository.findById).toHaveBeenCalledWith(42);
 		expect(result).toBe(issue);
 	});
 
-	it('sends fetch-issue span to Langfuse when issue found', async () => {
+	it('should record a fetch-issue span when the issue is found', async () => {
 		const issue = new Issue(42, { subject: 'Bug report', description: '', authorName: '', link: '' });
 		vi.mocked(innerRepository.findById).mockResolvedValue(issue);
+		const { tracer, spans } = recordingTracer();
 
-		const tracked = new SpanTrackedIssueRepository(innerRepository, langfuseService, 'trace-abc');
-		await tracked.findById(42);
+		await new SpanTrackedIssueRepository(innerRepository, tracer).findById(42);
 
-		expect(mockFetch).toHaveBeenCalledOnce();
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-		expect(body.batch).toHaveLength(1);
-		expect(body.batch[0].type).toBe('span-create');
-		expect(body.batch[0].body.traceId).toBe('trace-abc');
-		expect(body.batch[0].body.name).toBe('fetch-issue');
-		expect(body.batch[0].body.input).toEqual({ issueId: 42 });
-		expect(body.batch[0].body.output).toEqual({ found: true, subject: 'Bug report' });
+		expect(spans()).toHaveLength(1);
+		expect(spans()[0].name).toBe('fetch-issue');
+		expect(spans()[0].attributes).toEqual({ 'issue.id': 42, 'issue.found': true });
 	});
 
-	it('sends fetch-issue span with found=false when issue not found', async () => {
+	it('should record the issue as not found when the repository returns null', async () => {
 		vi.mocked(innerRepository.findById).mockResolvedValue(null);
+		const { tracer, spans } = recordingTracer();
 
-		const tracked = new SpanTrackedIssueRepository(innerRepository, langfuseService, 'trace-abc');
-		const result = await tracked.findById(99);
+		const result = await new SpanTrackedIssueRepository(innerRepository, tracer).findById(99);
 
 		expect(result).toBeNull();
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-		expect(body.batch[0].body.output).toEqual({ found: false, subject: undefined });
+		expect(spans()[0].attributes).toEqual({ 'issue.id': 99, 'issue.found': false });
 	});
 
-	it('does not throw when span creation fails', async () => {
-		const issue = new Issue(42, { subject: 'Test', description: '', authorName: '', link: '' });
-		vi.mocked(innerRepository.findById).mockResolvedValue(issue);
-		mockFetch.mockRejectedValueOnce(new Error('Network error'));
+	it('should end the span and propagate the error when the repository throws', async () => {
+		vi.mocked(innerRepository.findById).mockRejectedValue(new Error('Network error'));
+		const { tracer, spans } = recordingTracer();
 
-		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const tracked = new SpanTrackedIssueRepository(innerRepository, langfuseService, 'trace-1');
-		const result = await tracked.findById(42);
-
-		expect(result).toBe(issue);
-		expect(consoleSpy).toHaveBeenCalled();
-		consoleSpy.mockRestore();
-	});
-
-	it('includes startTime and endTime in span', async () => {
-		vi.mocked(innerRepository.findById).mockResolvedValue(null);
-
-		const tracked = new SpanTrackedIssueRepository(innerRepository, langfuseService, 'trace-1');
-		await tracked.findById(1);
-
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-		expect(body.batch[0].body.startTime).toBeDefined();
-		expect(body.batch[0].body.endTime).toBeDefined();
+		await expect(new SpanTrackedIssueRepository(innerRepository, tracer).findById(42)).rejects.toThrow('Network error');
+		expect(spans()).toHaveLength(1);
 	});
 });

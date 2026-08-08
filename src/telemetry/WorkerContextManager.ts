@@ -12,9 +12,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  */
 export class WorkerContextManager implements ContextManager {
 	private readonly storage = new AsyncLocalStorage<Context>();
+	private enabled = true;
 
 	active(): Context {
-		return this.storage.getStore() ?? ROOT_CONTEXT;
+		return (this.enabled ? this.storage.getStore() : undefined) ?? ROOT_CONTEXT;
 	}
 
 	with<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
@@ -40,11 +41,16 @@ export class WorkerContextManager implements ContextManager {
 	}
 
 	enable(): this {
+		this.enabled = true;
 		return this;
 	}
 
+	/**
+	 * Tracked with a flag rather than `AsyncLocalStorage.disable()`, which
+	 * workerd does not implement and throws on.
+	 */
 	disable(): this {
-		this.storage.disable();
+		this.enabled = false;
 		return this;
 	}
 }

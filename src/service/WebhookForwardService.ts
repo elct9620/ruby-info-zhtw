@@ -1,5 +1,6 @@
+import { withSpan } from '@/telemetry/withSpan';
 import { toErrorMessage } from '@/util/toErrorMessage';
-import { LangfuseService } from './LangfuseService';
+import { SpanStatusCode, type Tracer } from '@opentelemetry/api';
 import { Logger } from './Logger';
 
 const logger = new Logger('WebhookForwardService');
@@ -7,8 +8,7 @@ const logger = new Logger('WebhookForwardService');
 export class WebhookForwardService {
 	constructor(
 		private readonly urls: string[],
-		private readonly langfuseService?: LangfuseService,
-		private readonly traceId?: string,
+		private readonly tracer: Tracer,
 	) {}
 
 	async execute(issueId: number): Promise<void> {
@@ -18,8 +18,9 @@ export class WebhookForwardService {
 	}
 
 	private async forward(url: string, issueId: number): Promise<void> {
-		const startTime = new Date();
-		try {
+		return withSpan(this.tracer, 'webhook-forward', async (span) => {
+			span.setAttribute('server.address', this.safeHostname(url));
+
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -27,45 +28,28 @@ export class WebhookForwardService {
 			});
 
 			await response.body?.cancel();
+			span.setAttribute('http.response.status_code', response.status);
 
 			if (!response.ok) {
 				logger.error(`Webhook forward failed for issue #${issueId}: HTTP ${response.status}`, {
 					issueId,
-					host: new URL(url).hostname,
+					host: this.safeHostname(url),
 					status: response.status,
 				});
-				await this.createSpan(url, startTime, { success: false, status: response.status });
+				// A rejected delivery is swallowed so the other URLs still run, so the
+				// span is the only place the failure remains visible.
+				span.setStatus({ code: SpanStatusCode.ERROR, message: `HTTP ${response.status}` });
 				return;
 			}
 
-			logger.info(`Webhook forwarded successfully for issue #${issueId}`, { issueId, host: new URL(url).hostname });
-			await this.createSpan(url, startTime, { success: true });
-		} catch (error) {
+			logger.info(`Webhook forwarded successfully for issue #${issueId}`, { issueId, host: this.safeHostname(url) });
+		}).catch((error) => {
 			logger.error(`Webhook forward failed for issue #${issueId}: ${toErrorMessage(error)}`, {
 				issueId,
 				host: this.safeHostname(url),
 				error: toErrorMessage(error),
 			});
-			await this.createSpan(url, startTime, { success: false, error: toErrorMessage(error) });
-		}
-	}
-
-	private async createSpan(url: string, startTime: Date, output: unknown): Promise<void> {
-		if (!this.langfuseService || !this.traceId) return;
-
-		try {
-			await this.langfuseService.createSpan({
-				id: crypto.randomUUID(),
-				traceId: this.traceId,
-				name: 'webhook-forward',
-				startTime,
-				endTime: new Date(),
-				input: { host: this.safeHostname(url) },
-				output,
-			});
-		} catch (error) {
-			logger.error('Failed to create webhook-forward span', { error: toErrorMessage(error) });
-		}
+		});
 	}
 
 	private safeHostname(url: string): string {

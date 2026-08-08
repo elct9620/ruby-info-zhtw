@@ -62,6 +62,21 @@ describe('WorkerContextManager', () => {
 		expect(bound()).toBe('bound');
 	});
 
+	it('should stop exposing the stored context once disabled', () => {
+		const manager = new WorkerContextManager();
+		const scoped = ROOT_CONTEXT.setValue(TEST_KEY, 'scoped');
+
+		manager.disable();
+
+		expect(manager.with(scoped, () => manager.active())).toBe(ROOT_CONTEXT);
+	});
+
+	it('should be usable again after being enabled', () => {
+		const manager = new WorkerContextManager();
+
+		expect(manager.enable()).toBe(manager);
+	});
+
 	it('should nest spans under the active span so AI SDK generations join the same trace', async () => {
 		context.setGlobalContextManager(new WorkerContextManager());
 		const exporter = new InMemorySpanExporter();

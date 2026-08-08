@@ -1,6 +1,7 @@
-import { LangfuseService } from '@/service/LangfuseService';
 import { WebhookForwardService } from '@/service/WebhookForwardService';
+import { SpanStatusCode } from '@opentelemetry/api';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { recordingTracer } from '../support/recordingTracer';
 
 describe('WebhookForwardService', () => {
 	const originalFetch = global.fetch;
@@ -18,20 +19,20 @@ describe('WebhookForwardService', () => {
 	});
 
 	describe('execute', () => {
-		it('skips silently when urls array is empty', async () => {
+		it('should skip silently when no URLs are configured', async () => {
 			global.fetch = vi.fn();
-			const service = new WebhookForwardService([]);
+			const { tracer } = recordingTracer();
 
-			await service.execute(123);
+			await new WebhookForwardService([], tracer).execute(123);
 
 			expect(global.fetch).not.toHaveBeenCalled();
 		});
 
-		it('sends POST with correct payload and content type', async () => {
+		it('should send the issue id as JSON', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			const service = new WebhookForwardService(['https://example.com/webhook']);
+			const { tracer } = recordingTracer();
 
-			await service.execute(456);
+			await new WebhookForwardService(['https://example.com/webhook'], tracer).execute(456);
 
 			expect(global.fetch).toHaveBeenCalledWith('https://example.com/webhook', {
 				method: 'POST',
@@ -40,23 +41,22 @@ describe('WebhookForwardService', () => {
 			});
 		});
 
-		it('sends to all URLs', async () => {
+		it('should send to every configured URL', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			const urls = ['https://a.com/hook', 'https://b.com/hook'];
-			const service = new WebhookForwardService(urls);
+			const { tracer } = recordingTracer();
 
-			await service.execute(789);
+			await new WebhookForwardService(['https://a.com/hook', 'https://b.com/hook'], tracer).execute(789);
 
 			expect(global.fetch).toHaveBeenCalledTimes(2);
 			expect(global.fetch).toHaveBeenCalledWith('https://a.com/hook', expect.any(Object));
 			expect(global.fetch).toHaveBeenCalledWith('https://b.com/hook', expect.any(Object));
 		});
 
-		it('logs success for each URL', async () => {
+		it('should log success for each URL', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			const service = new WebhookForwardService(['https://example.com/webhook']);
+			const { tracer } = recordingTracer();
 
-			await service.execute(123);
+			await new WebhookForwardService(['https://example.com/webhook'], tracer).execute(123);
 
 			expect(logSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -68,11 +68,11 @@ describe('WebhookForwardService', () => {
 			);
 		});
 
-		it('logs error when fetch fails but does not throw', async () => {
+		it('should log the error without throwing when the request fails', async () => {
 			global.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
-			const service = new WebhookForwardService(['https://example.com/webhook']);
+			const { tracer } = recordingTracer();
 
-			await expect(service.execute(123)).resolves.toBeUndefined();
+			await expect(new WebhookForwardService(['https://example.com/webhook'], tracer).execute(123)).resolves.toBeUndefined();
 
 			expect(errorSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -84,11 +84,11 @@ describe('WebhookForwardService', () => {
 			);
 		});
 
-		it('logs error when response is not ok but does not throw', async () => {
+		it('should log the error without throwing when the response is not ok', async () => {
 			global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
-			const service = new WebhookForwardService(['https://example.com/webhook']);
+			const { tracer } = recordingTracer();
 
-			await expect(service.execute(123)).resolves.toBeUndefined();
+			await expect(new WebhookForwardService(['https://example.com/webhook'], tracer).execute(123)).resolves.toBeUndefined();
 
 			expect(errorSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -100,92 +100,79 @@ describe('WebhookForwardService', () => {
 			);
 		});
 
-		it('continues forwarding to other URLs when one fails', async () => {
+		it('should keep forwarding to the other URLs when one fails', async () => {
 			global.fetch = vi.fn().mockRejectedValueOnce(new Error('Connection refused')).mockResolvedValueOnce({ ok: true });
-			const service = new WebhookForwardService(['https://fail.com/hook', 'https://ok.com/hook']);
+			const { tracer } = recordingTracer();
 
-			await service.execute(123);
+			await new WebhookForwardService(['https://fail.com/hook', 'https://ok.com/hook'], tracer).execute(123);
 
 			expect(global.fetch).toHaveBeenCalledTimes(2);
 			expect(logSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					level: 'info',
-					message: expect.stringContaining('Webhook forwarded successfully'),
-				}),
+				expect.objectContaining({ level: 'info', message: expect.stringContaining('Webhook forwarded successfully') }),
 			);
 			expect(errorSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					level: 'error',
-					message: expect.stringContaining('Webhook forward failed'),
-				}),
+				expect.objectContaining({ level: 'error', message: expect.stringContaining('Webhook forward failed') }),
 			);
 		});
 
-		it('cancels response body after successful forward', async () => {
+		it('should cancel the response body after a successful forward', async () => {
 			const cancelFn = vi.fn();
 			global.fetch = vi.fn().mockResolvedValue({ ok: true, body: { cancel: cancelFn } });
-			const service = new WebhookForwardService(['https://example.com/webhook']);
+			const { tracer } = recordingTracer();
 
-			await service.execute(123);
+			await new WebhookForwardService(['https://example.com/webhook'], tracer).execute(123);
 
 			expect(cancelFn).toHaveBeenCalledOnce();
 		});
 
-		it('cancels response body after failed forward', async () => {
+		it('should cancel the response body after a failed forward', async () => {
 			const cancelFn = vi.fn();
 			global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, body: { cancel: cancelFn } });
-			const service = new WebhookForwardService(['https://example.com/webhook']);
+			const { tracer } = recordingTracer();
 
-			await service.execute(123);
+			await new WebhookForwardService(['https://example.com/webhook'], tracer).execute(123);
 
 			expect(cancelFn).toHaveBeenCalledOnce();
 		});
+	});
 
-		it('creates Langfuse span when langfuseService is provided', async () => {
-			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			const langfuseService = {
-				createSpan: vi.fn().mockResolvedValue(undefined),
-			} as unknown as LangfuseService;
+	describe('tracing', () => {
+		it('should record a webhook-forward span carrying the target host and status', async () => {
+			global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+			const { tracer, spans } = recordingTracer();
 
-			const service = new WebhookForwardService(['https://example.com/webhook'], langfuseService, 'trace-123');
+			await new WebhookForwardService(['https://example.com/webhook'], tracer).execute(456);
 
-			await service.execute(456);
-
-			expect(langfuseService.createSpan).toHaveBeenCalledWith(
-				expect.objectContaining({
-					traceId: 'trace-123',
-					name: 'webhook-forward',
-					input: { host: 'example.com' },
-					output: { success: true },
-				}),
-			);
+			expect(spans()).toHaveLength(1);
+			expect(spans()[0].name).toBe('webhook-forward');
+			expect(spans()[0].attributes).toEqual({ 'server.address': 'example.com', 'http.response.status_code': 200 });
 		});
 
-		it('does not create span when langfuseService is not provided', async () => {
-			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			const service = new WebhookForwardService(['https://example.com/webhook']);
+		it('should mark the span as failed when the response is not ok', async () => {
+			global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+			const { tracer, spans } = recordingTracer();
 
-			await service.execute(456);
+			await new WebhookForwardService(['https://example.com/webhook'], tracer).execute(456);
 
-			expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ level: 'info' }));
+			expect(spans()[0].status).toEqual({ code: SpanStatusCode.ERROR, message: 'HTTP 500' });
 		});
 
-		it('degrades gracefully when span creation fails', async () => {
-			global.fetch = vi.fn().mockResolvedValue({ ok: true });
-			const langfuseService = {
-				createSpan: vi.fn().mockRejectedValue(new Error('Langfuse down')),
-			} as unknown as LangfuseService;
+		it('should mark the span as failed when the request throws', async () => {
+			global.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
+			const { tracer, spans } = recordingTracer();
 
-			const service = new WebhookForwardService(['https://example.com/webhook'], langfuseService, 'trace-123');
+			await new WebhookForwardService(['https://example.com/webhook'], tracer).execute(456);
 
-			await expect(service.execute(456)).resolves.toBeUndefined();
+			expect(spans()[0].status.code).toBe(SpanStatusCode.ERROR);
+		});
 
-			expect(errorSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					level: 'error',
-					message: expect.stringContaining('Failed to create webhook-forward span'),
-				}),
-			);
+		it('should keep an unparseable URL out of the span as a marker rather than the raw value', async () => {
+			global.fetch = vi.fn().mockRejectedValue(new Error('Invalid URL'));
+			const { tracer, spans } = recordingTracer();
+
+			await new WebhookForwardService(['not-a-url'], tracer).execute(456);
+
+			expect(spans()[0].attributes['server.address']).toBe('[invalid-url]');
 		});
 	});
 });

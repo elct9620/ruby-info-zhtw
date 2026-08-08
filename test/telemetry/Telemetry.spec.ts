@@ -1,26 +1,119 @@
 import { Telemetry } from '@/telemetry/Telemetry';
-import { describe, expect, it } from 'vitest';
+import { withSpan } from '@/telemetry/withSpan';
+import { trace } from '@opentelemetry/api';
+import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const BASE_URL = 'https://langfuse.test';
+const CREDENTIALS = { publicKey: 'pk-test', secretKey: 'sk-test', baseUrl: 'https://langfuse.test' };
 
-describe('Telemetry.create', () => {
-	it('should return undefined when the public key is missing', () => {
-		expect(Telemetry.create({ secretKey: 'sk-test', baseUrl: BASE_URL })).toBeUndefined();
+async function recordingInsideTrace(telemetry: Telemetry): Promise<boolean | undefined> {
+	let recording: boolean | undefined;
+	await telemetry.trace({ name: 'test-trace' }, async () => {
+		recording = trace.getActiveSpan()?.isRecording();
+	});
+	return recording;
+}
+
+describe('Telemetry', () => {
+	describe('when Langfuse credentials are absent', () => {
+		it('should record nothing when the public key is missing', async () => {
+			const telemetry = Telemetry.create({ secretKey: 'sk-test' });
+
+			expect(await recordingInsideTrace(telemetry)).toBe(false);
+		});
+
+		it('should record nothing when the secret key is missing', async () => {
+			const telemetry = Telemetry.create({ publicKey: 'pk-test' });
+
+			expect(await recordingInsideTrace(telemetry)).toBe(false);
+		});
+
+		it('should record nothing when both keys are empty strings', async () => {
+			const telemetry = Telemetry.create({ publicKey: '', secretKey: '' });
+
+			expect(await recordingInsideTrace(telemetry)).toBe(false);
+		});
+
+		it('should still run the traced work', async () => {
+			const telemetry = Telemetry.create({});
+
+			const result = await telemetry.trace({ name: 'test-trace' }, async () => 'done');
+
+			expect(result).toBe('done');
+		});
 	});
 
-	it('should return undefined when the secret key is missing', () => {
-		expect(Telemetry.create({ publicKey: 'pk-test', baseUrl: BASE_URL })).toBeUndefined();
+	describe('when Langfuse credentials are present', () => {
+		// The exporter posts to Langfuse the moment a trace ends. Left alone it would
+		// reach for the network and reject after the test has already finished.
+		beforeEach(() => {
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })));
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		it('should record the trace', async () => {
+			const telemetry = Telemetry.create(CREDENTIALS);
+
+			expect(await recordingInsideTrace(telemetry)).toBe(true);
+		});
+
+		it('should return what the traced work returns', async () => {
+			const telemetry = Telemetry.create(CREDENTIALS);
+
+			const result = await telemetry.trace({ name: 'test-trace' }, async () => ({ issueId: 42 }));
+
+			expect(result).toEqual({ issueId: 42 });
+		});
+
+		it('should propagate the error the traced work throws', async () => {
+			const telemetry = Telemetry.create(CREDENTIALS);
+
+			await expect(
+				telemetry.trace({ name: 'test-trace' }, async () => {
+					throw new Error('summarize failed');
+				}),
+			).rejects.toThrow('summarize failed');
+		});
+
+		it('should not let a failing export replace the traced work result', async () => {
+			vi.spyOn(console, 'warn').mockImplementation(() => {});
+			vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Langfuse unreachable')));
+			const telemetry = Telemetry.create(CREDENTIALS);
+
+			await expect(telemetry.trace({ name: 'test-trace' }, async () => 'delivered')).resolves.toBe('delivered');
+		});
 	});
 
-	it('should return undefined when both keys are empty strings', () => {
-		expect(Telemetry.create({ publicKey: '', secretKey: '', baseUrl: BASE_URL })).toBeUndefined();
+	it('should expose a tracer and an AI SDK integration for the flow to use', () => {
+		const telemetry = Telemetry.create(CREDENTIALS);
+
+		expect(telemetry.tracer).toBeDefined();
+		expect(telemetry.integration).toBeDefined();
 	});
 
-	it('should return a telemetry instance when both keys are present', () => {
-		const telemetry = Telemetry.create({ publicKey: 'pk-test', secretKey: 'sk-test', baseUrl: BASE_URL });
+	// The point of the whole pipeline: the Bug Tracker fetch, the AI generation and
+	// the two webhook deliveries each open their own span without knowing about the
+	// others, and still land in one trace the reader can follow end to end.
+	it('should gather spans opened during the trace under the root', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })));
+		const telemetry = Telemetry.create(CREDENTIALS);
+		let root: { traceId: string; spanId: string } | undefined;
+		let child: { traceId: string; parentSpanId?: string } | undefined;
 
-		expect(telemetry).toBeDefined();
-		expect(telemetry?.tracer).toBeDefined();
-		expect(telemetry?.integration).toBeDefined();
+		await telemetry.trace({ name: 'email-summarize' }, async () => {
+			root = trace.getActiveSpan()?.spanContext();
+			await withSpan(telemetry.tracer, 'fetch-issue', async () => {
+				const span = trace.getActiveSpan() as unknown as ReadableSpan;
+				child = { traceId: span.spanContext().traceId, parentSpanId: span.parentSpanContext?.spanId };
+			});
+		});
+
+		expect(root?.traceId).toBeTruthy();
+		expect(child?.traceId).toBe(root?.traceId);
+		expect(child?.parentSpanId).toBe(root?.spanId);
+		vi.unstubAllGlobals();
 	});
 });

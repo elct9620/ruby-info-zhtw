@@ -1,8 +1,8 @@
 import { IssueType } from '@/entity/Issue';
 import { SpanTrackedSummarizePresenter } from '@/presenter/SpanTrackedSummarizePresenter';
-import { LangfuseService } from '@/service/LangfuseService';
 import { SummarizePresenter, SummarizeResult } from '@/usecase/interface';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { recordingTracer } from '../support/recordingTracer';
 
 function makeResult(overrides: Partial<SummarizeResult> = {}): SummarizeResult {
 	return {
@@ -15,57 +15,43 @@ function makeResult(overrides: Partial<SummarizeResult> = {}): SummarizeResult {
 }
 
 describe('SpanTrackedSummarizePresenter', () => {
-	let mockFetch: ReturnType<typeof vi.fn>;
-	let langfuseService: LangfuseService;
 	let innerPresenter: SummarizePresenter;
 
 	beforeEach(() => {
-		mockFetch = vi.fn().mockResolvedValue({ ok: true });
-		vi.stubGlobal('fetch', mockFetch);
-		vi.stubGlobal('crypto', {
-			randomUUID: () => 'test-uuid',
-		});
-		langfuseService = new LangfuseService('pub-key', 'sec-key');
-		innerPresenter = {
-			render: vi.fn(),
-		};
+		innerPresenter = { render: vi.fn() };
 	});
 
-	it('delegates render to inner presenter and creates span', async () => {
-		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-abc');
+	it('should delegate rendering to the inner presenter', async () => {
+		const { tracer } = recordingTracer();
 		const result = makeResult();
-		await tracked.render(result);
+
+		await new SpanTrackedSummarizePresenter(innerPresenter, tracer).render(result);
 
 		expect(innerPresenter.render).toHaveBeenCalledWith(result);
-		expect(mockFetch).toHaveBeenCalledOnce();
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-		expect(body.batch).toHaveLength(1);
-		expect(body.batch[0].type).toBe('span-create');
-		expect(body.batch[0].body.traceId).toBe('trace-abc');
-		expect(body.batch[0].body.name).toBe('discord-webhook');
-		expect(body.batch[0].body.input).toEqual({ webhookUrl: '[redacted]' });
-		expect(body.batch[0].body.output).toEqual({ success: true });
 	});
 
-	it('includes startTime and endTime in span', async () => {
-		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-1');
-		await tracked.render(makeResult());
+	it('should record a discord-webhook span', async () => {
+		const { tracer, spans } = recordingTracer();
 
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-		expect(body.batch[0].body.startTime).toBeDefined();
-		expect(body.batch[0].body.endTime).toBeDefined();
+		await new SpanTrackedSummarizePresenter(innerPresenter, tracer).render(makeResult());
+
+		expect(spans()).toHaveLength(1);
+		expect(spans()[0].name).toBe('discord-webhook');
 	});
 
-	it('does not throw when span creation fails', async () => {
-		vi.mocked(innerPresenter.render).mockResolvedValue(undefined);
-		mockFetch.mockRejectedValueOnce(new Error('Network error'));
+	it('should keep the webhook URL out of the span', async () => {
+		const { tracer, spans } = recordingTracer();
 
-		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const tracked = new SpanTrackedSummarizePresenter(innerPresenter, langfuseService, 'trace-1');
-		await tracked.render(makeResult());
+		await new SpanTrackedSummarizePresenter(innerPresenter, tracer).render(makeResult());
 
-		expect(innerPresenter.render).toHaveBeenCalledOnce();
-		expect(consoleSpy).toHaveBeenCalled();
-		consoleSpy.mockRestore();
+		expect(spans()[0].attributes).toEqual({});
+	});
+
+	it('should end the span and propagate the error when delivery fails', async () => {
+		vi.mocked(innerPresenter.render).mockRejectedValue(new Error('Discord down'));
+		const { tracer, spans } = recordingTracer();
+
+		await expect(new SpanTrackedSummarizePresenter(innerPresenter, tracer).render(makeResult())).rejects.toThrow('Discord down');
+		expect(spans()).toHaveLength(1);
 	});
 });

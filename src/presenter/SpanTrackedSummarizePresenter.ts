@@ -1,37 +1,19 @@
-import { LangfuseService } from '@/service/LangfuseService';
-import { Logger } from '@/service/Logger';
+import { withSpan } from '@/telemetry/withSpan';
 import { SummarizePresenter, SummarizeResult } from '@/usecase/interface';
-import { toErrorMessage } from '@/util/toErrorMessage';
-
-const logger = new Logger('SpanTrackedSummarizePresenter');
+import type { Tracer } from '@opentelemetry/api';
 
 /**
- * Wraps a SummarizePresenter with Langfuse span tracing for observability.
+ * Wraps a SummarizePresenter so the Discord delivery appears as its own span in
+ * the surrounding trace. The span carries no attributes: the webhook URL is a
+ * credential, and everything else worth knowing is the span's own timing.
  */
 export class SpanTrackedSummarizePresenter implements SummarizePresenter {
 	constructor(
 		private readonly presenter: SummarizePresenter,
-		private readonly langfuseService: LangfuseService,
-		private readonly traceId: string,
+		private readonly tracer: Tracer,
 	) {}
 
 	async render(result: SummarizeResult): Promise<void> {
-		const startTime = new Date();
-		await this.presenter.render(result);
-		const endTime = new Date();
-
-		try {
-			await this.langfuseService.createSpan({
-				id: crypto.randomUUID(),
-				traceId: this.traceId,
-				name: 'discord-webhook',
-				startTime,
-				endTime,
-				input: { webhookUrl: '[redacted]' },
-				output: { success: true },
-			});
-		} catch (error) {
-			logger.error('Failed to create discord-webhook span', { error: toErrorMessage(error) });
-		}
+		return withSpan(this.tracer, 'discord-webhook', () => this.presenter.render(result));
 	}
 }

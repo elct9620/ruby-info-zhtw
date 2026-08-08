@@ -7,9 +7,9 @@ import { SpanTrackedSummarizePresenter } from '@/presenter/SpanTrackedSummarizeP
 import { RestIssueRepository } from '@/repository/RestIssueRepository';
 import { SpanTrackedIssueRepository } from '@/repository/SpanTrackedIssueRepository';
 import { AiSummarizeService } from '@/service/AiSummarizeService';
-import { LangfuseService } from '@/service/LangfuseService';
 import { Logger } from '@/service/Logger';
 import { WebhookForwardService } from '@/service/WebhookForwardService';
+import { Telemetry } from '@/telemetry/Telemetry';
 import { SummarizeUsecase } from '@/usecase/SummarizeUsecase';
 import { toErrorMessage } from '@/util/toErrorMessage';
 
@@ -56,17 +56,21 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		});
 
 		const config = new CloudflareConfig(this.env);
-		const langfuseService =
-			config.langfusePublicKey && config.langfuseSecretKey
-				? new LangfuseService(config.langfusePublicKey, config.langfuseSecretKey, config.langfuseBaseUrl)
-				: undefined;
-
-		const traceId = crypto.randomUUID();
-		await this.initializeTrace(langfuseService, traceId, state.issueId);
+		const telemetry = Telemetry.create({
+			publicKey: config.langfusePublicKey,
+			secretKey: config.langfuseSecretKey,
+			baseUrl: config.langfuseBaseUrl,
+		});
 
 		try {
-			const results = await this.executeTasks(state.issueId, config, langfuseService, traceId);
-			await this.finalizeTrace(langfuseService, traceId, state.issueId, results);
+			await telemetry.trace(
+				{
+					name: 'email-summarize',
+					input: { issueId: state.issueId },
+					output: (results: PromiseSettledResult<void>[]) => ({ success: results.every((result) => result.status === 'fulfilled') }),
+				},
+				() => this.executeTasks(state.issueId, config, telemetry),
+			);
 		} finally {
 			await this.ctx.blockConcurrencyWhile(async () => {
 				const currentState = await this.ctx.storage.get<DebounceState>('state');
@@ -79,31 +83,10 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		}
 	}
 
-	private async initializeTrace(langfuseService: LangfuseService | undefined, traceId: string, issueId: number): Promise<void> {
-		try {
-			await langfuseService?.createTrace({
-				id: traceId,
-				name: 'email-summarize',
-				input: { issueId },
-				tags: ['summarize'],
-			});
-		} catch (error) {
-			logger.error(`Failed to initialize Langfuse trace for issue #${issueId}: ${toErrorMessage(error)}`, {
-				issueId,
-				error: toErrorMessage(error),
-			});
-		}
-	}
-
-	private async executeTasks(
-		issueId: number,
-		config: CloudflareConfig,
-		langfuseService: LangfuseService | undefined,
-		traceId: string,
-	): Promise<PromiseSettledResult<void>[]> {
+	private async executeTasks(issueId: number, config: CloudflareConfig, telemetry: Telemetry): Promise<PromiseSettledResult<void>[]> {
 		const results = await Promise.allSettled([
-			this.summarize(issueId, config, langfuseService, traceId),
-			this.forwardWebhooks(issueId, config, langfuseService, traceId),
+			this.summarize(issueId, config, telemetry),
+			this.forwardWebhooks(issueId, config, telemetry),
 		]);
 
 		for (const result of results) {
@@ -118,55 +101,22 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		return results;
 	}
 
-	private async finalizeTrace(
-		langfuseService: LangfuseService | undefined,
-		traceId: string,
-		issueId: number,
-		results: PromiseSettledResult<void>[],
-	): Promise<void> {
-		try {
-			await langfuseService?.finalizeTrace({
-				traceId,
-				output: { success: results.every((r) => r.status === 'fulfilled') },
-			});
-		} catch (error) {
-			logger.error(`Failed to finalize Langfuse trace for issue #${issueId}: ${toErrorMessage(error)}`, {
-				issueId,
-				error: toErrorMessage(error),
-			});
-		}
-	}
-
-	private async summarize(
-		issueId: number,
-		config: CloudflareConfig,
-		langfuseService: LangfuseService | undefined,
-		traceId: string,
-	): Promise<void> {
+	private async summarize(issueId: number, config: CloudflareConfig, telemetry: Telemetry): Promise<void> {
 		const openai = createOpenAI({
 			baseURL: config.openAiGateway,
 			apiKey: config.openAiApiKey,
 		});
 
-		const repository = new RestIssueRepository();
-		const summarizeService = new AiSummarizeService(openai('gpt-5.6-luna'), langfuseService, langfuseService ? traceId : undefined);
+		const repository = new SpanTrackedIssueRepository(new RestIssueRepository(), telemetry.tracer);
+		const summarizeService = new AiSummarizeService(openai('gpt-5.6-luna'), telemetry);
+		const presenter = new SpanTrackedSummarizePresenter(new DiscordSummarizePresenter(config.discordWebhook), telemetry.tracer);
 
-		const trackedRepository = langfuseService ? new SpanTrackedIssueRepository(repository, langfuseService, traceId) : repository;
-
-		const basePresenter = new DiscordSummarizePresenter(config.discordWebhook);
-		const presenter = langfuseService ? new SpanTrackedSummarizePresenter(basePresenter, langfuseService, traceId) : basePresenter;
-
-		const useCase = new SummarizeUsecase(trackedRepository, summarizeService, presenter);
+		const useCase = new SummarizeUsecase(repository, summarizeService, presenter);
 		await useCase.execute(issueId);
 	}
 
-	private async forwardWebhooks(
-		issueId: number,
-		config: CloudflareConfig,
-		langfuseService: LangfuseService | undefined,
-		traceId: string,
-	): Promise<void> {
-		const service = new WebhookForwardService(config.webhookForwardUrls, langfuseService, traceId);
+	private async forwardWebhooks(issueId: number, config: CloudflareConfig, telemetry: Telemetry): Promise<void> {
+		const service = new WebhookForwardService(config.webhookForwardUrls, telemetry.tracer);
 		await service.execute(issueId);
 	}
 }
