@@ -66,6 +66,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 			await telemetry.trace(
 				{
 					name: 'email-summarize',
+					tags: ['summarize'],
 					input: { issueId: state.issueId },
 					output: (results: PromiseSettledResult<void>[]) => ({ success: results.every((result) => result.status === 'fulfilled') }),
 				},

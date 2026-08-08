@@ -60,6 +60,31 @@ describe('Telemetry', () => {
 			expect(await recordingInsideTrace(telemetry)).toBe(true);
 		});
 
+		it('should describe the trace to Langfuse with its name, tags, input and output', async () => {
+			const telemetry = Telemetry.create(CREDENTIALS);
+			let root: ReadableSpan | undefined;
+
+			await telemetry.trace(
+				{
+					name: 'email-summarize',
+					tags: ['summarize'],
+					input: { issueId: 12345 },
+					output: (result: string) => ({ success: result === 'delivered' }),
+				},
+				async () => {
+					root = trace.getActiveSpan() as unknown as ReadableSpan;
+					return 'delivered';
+				},
+			);
+
+			expect(root?.attributes).toMatchObject({
+				'langfuse.trace.name': 'email-summarize',
+				'langfuse.trace.tags': ['summarize'],
+				'langfuse.trace.input': JSON.stringify({ issueId: 12345 }),
+				'langfuse.trace.output': JSON.stringify({ success: true }),
+			});
+		});
+
 		it('should return what the traced work returns', async () => {
 			const telemetry = Telemetry.create(CREDENTIALS);
 

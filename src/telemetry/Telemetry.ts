@@ -13,17 +13,19 @@ export interface TelemetryParams {
 
 export interface TraceParams<T> {
 	name: string;
+	tags?: string[];
 	input?: unknown;
 	output?: (result: T) => unknown;
 }
 
 /**
- * Attributes Langfuse reads off the root span to name the trace and show what
- * went in and out. Every other span this project emits uses plain OpenTelemetry
- * attributes, so Langfuse's vocabulary stays confined to this one place and the
- * export configuration.
+ * Attributes Langfuse reads off the root span to name the trace, file it, and
+ * show what went in and out. Every other span this project emits uses plain
+ * OpenTelemetry attributes, so Langfuse's vocabulary stays confined to this one
+ * place and the export configuration.
  */
 const TRACE_NAME = 'langfuse.trace.name';
+const TRACE_TAGS = 'langfuse.trace.tags';
 const TRACE_INPUT = 'langfuse.trace.input';
 const TRACE_OUTPUT = 'langfuse.trace.output';
 
@@ -119,10 +121,11 @@ export class Telemetry {
 	 * recorded under it. A Worker invocation ends without warning, so a trace
 	 * that is not flushed here never leaves.
 	 */
-	async trace<T>({ name, input, output }: TraceParams<T>, fn: () => Promise<T>): Promise<T> {
+	async trace<T>({ name, tags, input, output }: TraceParams<T>, fn: () => Promise<T>): Promise<T> {
 		try {
 			return await withSpan(this.tracer, name, async (span) => {
 				span.setAttribute(TRACE_NAME, name);
+				if (tags) span.setAttribute(TRACE_TAGS, tags);
 				setSerialized(span, TRACE_INPUT, input);
 
 				const result = await fn();
