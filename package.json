@@ -14,7 +14,7 @@
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.20.3",
+		"@cloudflare/vitest-pool-workers": "^0.21.3",
 		"@vitest/coverage-istanbul": "~4.1.10",
 		"prettier": "^3.9.6",
 		"prettier-plugin-organize-imports": "^4.1.0",
