@@ -24,7 +24,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/openai": "^4.0.50",
-		"@hono/oauth-providers": "^0.8.8",
+		"@hono/oauth-providers": "^0.9.0",
 		"@langfuse/otel": "^5.10.0",
 		"@langfuse/vercel-ai-sdk": "^5.10.0",
 		"@opentelemetry/api": "^1.9.1",
