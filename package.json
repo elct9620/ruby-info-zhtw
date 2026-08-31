@@ -18,7 +18,7 @@
 		"@vitest/coverage-istanbul": "~4.1.11",
 		"prettier": "^3.9.6",
 		"prettier-plugin-organize-imports": "^4.1.0",
-		"typescript": "^6.0.3",
+		"typescript": "^7.0.2",
 		"vitest": "~4.1.2",
 		"wrangler": "^4.127.0"
 	},
