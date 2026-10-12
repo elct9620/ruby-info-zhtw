@@ -1,7 +1,7 @@
 {
 	"extends": "../tsconfig.json",
 	"compilerOptions": {
-		"types": ["@types/node", "@types/mustache", "@cloudflare/vitest-pool-workers/types"]
+		"types": ["@types/node", "@types/mustache", "@cloudflare/vitest-plugin/types"]
 	},
 	"include": ["./**/*.ts", "../worker-configuration.d.ts"],
 	"exclude": []
