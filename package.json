@@ -14,7 +14,7 @@
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-plugin": "^1.4.3",
+		"@cloudflare/vitest-plugin": "^1.4.7",
 		"@vitest/coverage-istanbul": "~5.0.5",
 		"prettier": "^3.9.9",
 		"typescript": "^7.0.2",
