@@ -109,7 +109,7 @@ export class IssueDebounceObject extends DurableObject<Env> {
 		});
 
 		const repository = new SpanTrackedIssueRepository(new RestIssueRepository(), telemetry.tracer);
-		const summarizeService = new AiSummarizeService(openai('gpt-5.6-luna'), telemetry);
+		const summarizeService = new AiSummarizeService(openai('gpt-6-luna'), telemetry);
 		const presenter = new SpanTrackedSummarizePresenter(new DiscordSummarizePresenter(config.discordWebhook), telemetry.tracer);
 
 		const useCase = new SummarizeUsecase(repository, summarizeService, presenter);
