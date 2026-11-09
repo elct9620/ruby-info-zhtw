@@ -22,7 +22,7 @@
 		"wrangler": "^4.156.0"
 	},
 	"dependencies": {
-		"@ai-sdk/openai": "^4.0.105",
+		"@ai-sdk/openai": "^4.0.109",
 		"@hono/oauth-providers": "^0.9.0",
 		"@langfuse/otel": "^6.1.1",
 		"@langfuse/vercel-ai-sdk": "^6.1.1",
